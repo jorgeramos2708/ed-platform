@@ -24,6 +24,8 @@ tmp/
 # Artefactos de spikes (evidencia local)
 spikes/**/volcado.sql
 spikes/**/job-id.txt
+spikes/**/spike-key
+spikes/**/s2-estado.jsonl
 
 # Sistema / IDE
 .DS_Store

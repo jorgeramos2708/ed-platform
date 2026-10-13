@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="/xterm.css">
+<style>body { background: #1e1e1e; margin: 0; padding: 8px; }</style>
+</head>
+<body>
+<div id="term"></div>
+<script src="/xterm.js"></script>
+<script>
+  const term = new Terminal({ cols: 100, rows: 30, cursorBlink: true });
+  term.open(document.getElementById('term'));
+  const ws = new WebSocket('ws://localhost:8321');
+  ws.onopen = () => { document.title = 'TERMINAL-LISTO'; term.write('[S2] conectando...\r\n'); };
+  ws.onmessage = (m) => { term.write(m.data); window.__eco = (window.__eco || '') + m.data; };
+  ws.onclose = () => term.write('\r\n[S2] sesión cerrada\r\n');
+  term.onData((d) => { if (ws.readyState === 1) ws.send(d); });
+</script>
+</body>
+</html>
