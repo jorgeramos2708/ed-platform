@@ -111,7 +111,7 @@
 
 | ID | Ítem | P | Criterios |
 |---|---|---|---|
-| E13-1 | Instalación documentada con Docker Compose | P0 | instalación limpia en máquina virgen siguiendo solo la docs (puerta M6) |
+| E13-1 | Instalador Windows + lanzador `edp.exe` (.NET self-contained) | P0 | instalación limpia en Windows 10/11 **sin herramientas de desarrollo** con diagnóstico de prerequisitos (WSL2, Docker Desktop); recuperación desde backup probada (puerta M6) |
 | E13-2 | Backups programados + restauración probada | P1 | backup diario cifrado; restauración en entorno limpio verificada (T8.1) |
 | E13-3 | Actualizaciones con migración y vuelta atrás | P1 | actualización + rollback probados (T8.2) |
 

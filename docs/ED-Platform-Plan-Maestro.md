@@ -1,6 +1,6 @@
 # ED Platform — Plan Maestro
 
-**Versión:** 1.3 (Fase 0 ejecutada — puerta M0 cerrada; ver §18 y docs/puerta-m0.md)
+**Versión:** 1.4 (distribución v1.0 = instalación Windows con lanzador `edp.exe` — ver §18 y ADR-0011)
 **Estado:** Fase 0 completada — **puerta M0 cerrada** (2026-10-13); listo para iniciar la Fase 1
 **Documento complementario:** *ED-Platform-Arquitectura-y-Fases-v1.3.md* (detalle técnico, diagramas, seguridad, anexos; renombrar el archivo físico). Este plan maestro resume el qué, el cuándo, el orden y las decisiones; el documento de arquitectura es la referencia técnica.
 
@@ -41,7 +41,7 @@ Un usuario o equipo pequeño puede pedir un cambio en lenguaje natural, revisarl
 - CD a entornos de desarrollo, preproducción y producción para aplicaciones web en contenedor.
 - Verificación de salud y versión, rollback básico.
 - Monitoreo simple y alertas iniciales.
-- Instalación con Docker Compose, backups y guía de administración.
+- Instalación en Windows con lanzador `edp.exe` (.NET self-contained): arranque del stack, diagnóstico de prerequisitos y apertura de la UI; backups y guía de administración.
 
 ### Fuera de la versión 1.0 (se evalúa después)
 - Conector Windows (PowerShell Remoting).
@@ -65,10 +65,10 @@ Estas decisiones cierran los puntos abiertos del documento de arquitectura. Pued
 | 1 | Uso inicial | Personal o equipo pequeño, con modelo de roles desde el inicio | Evita rediseñar permisos después |
 | 2 | Proveedor Git | Git local siempre; adaptador GitHub primero | Cobertura amplia con poco esfuerzo |
 | 3 | Proveedor de IA | Interfaz agnóstica; un proveedor externo principal, uno de respaldo y modelo local opcional | Continuidad y privacidad |
-| 4 | Entorno de ejecución | Linux con contenedores (Docker rootless o Podman) | Ruta práctica y verificable |
+| 4 | Entorno de ejecución | **Host Windows v1.0** (lanzador `edp.exe` + Docker Desktop/WSL2 para contenedores de tarea Linux); instalación Linux como P2 futuro | La plataforma se instala donde está el usuario; ADR-0011 |
 | 5 | Primer tipo de despliegue | Aplicación web en contenedor vía SSH, estrategia *Recreate* | Menor complejidad, valida todo el flujo |
 | 6 | Método de servidor | SSH/SFTP en Linux; Windows más adelante | Reduce el alcance inicial |
-| 7 | Ubicación inicial | Docker Compose en un equipo o servidor propio encendido de forma continua | Trabajos persistentes sin nube |
+| 7 | Ubicación inicial | **Instalación local en Windows** vía lanzador `edp.exe`; Compose queda como motor interno de los servicios | Trabajos persistentes sin nube; un comando para arrancar todo (ADR-0011) |
 | 8 | Política de producción | Aprobación humana siempre | Seguridad por defecto |
 | 9 | Acceso | Red privada o VPN; sin exponer a Internet en la v1.0 | Reduce la superficie de ataque |
 | 10 | Retención | Logs 90 días; auditoría 1 año; artefactos: últimas N versiones por proyecto; backups diarios con retención semanal y mensual | Punto de partida ajustable |
@@ -103,7 +103,7 @@ Estas decisiones cierran los puntos abiertos del documento de arquitectura. Pued
 | **M3** | Primer flujo completo | Fases 4, 5 y 6 (alcance mínimo) | Del cambio por IA al despliegue verificado en un servidor propio, con fallo controlado detectado |
 | **M4** | Operación | Fase 7 | Panel de salud, alertas y correlación entre despliegues y fallos |
 | **M5** | Endurecimiento | Fase 8 | Informe de seguridad, controles verificados, backups restaurados |
-| **M6** | Versión 1.0 | Fase 9 | Instalación limpia por documentación y recuperación desde backup |
+| **M6** | Versión 1.0 | Fase 9 | Instalación limpia en Windows vía instalador y recuperación desde backup |
 
 ### Orden y dependencias
 
@@ -141,11 +141,11 @@ Supuestos: 1 a 2 desarrolladores con experiencia, trabajo continuo, sin cambios 
 | 6 CD | 5–7 semanas | M3 |
 | 7 Monitoreo | 3–5 semanas | M4 |
 | 8 Seguridad integral | 3–4 semanas | M5 |
-| 9 Distribución | 3–4 semanas | M6 |
+| 9 Distribución | 4–5 semanas | M6 |
 
 **Totales orientativos**
-- Una persona, secuencial: 36 a 53 semanas (aprox. 8 a 12 meses).
-- Dos personas, con paralelismo en las Fases 2–4: aproximadamente 26 a 38 semanas (6 a 9 meses).
+- Una persona, secuencial: 37 a 54 semanas (aprox. 9 a 12 meses).
+- Dos personas, con paralelismo en las Fases 2–4: aproximadamente 27 a 39 semanas (7 a 9 meses).
 
 El valor del plan está en llegar a **M3** lo antes posible, ya que demuestra que los módulos funcionan juntos.
 
@@ -185,7 +185,7 @@ Cada spike tiene un resultado de tipo *sí/no/ajuste* y se documenta en un ADR.
 ## 7. Fases 1 a 9: objetivos, entregables y puertas
 
 ### Fase 1 — Núcleo y UI (M1)
-- **Entregables:** monorepo, API, PostgreSQL, autenticación y roles básicos, proyectos, cola de trabajos y worker, almacén local de secretos, auditoría, logs estructurados, Docker Compose de desarrollo.
+- **Entregables:** monorepo, API, PostgreSQL, autenticación y roles básicos, proyectos, cola de trabajos y worker, almacén local de secretos, auditoría, logs estructurados, Docker Compose de desarrollo, esqueleto del lanzador `edp.exe` (.NET self-contained) que arranca el stack y abre la UI.
 - **Puerta:** reiniciar los servicios no pierde proyectos ni deja trabajos en estados incoherentes; ningún secreto aparece en la base de datos ni en los logs.
 
 ### Fase 2 — Workspace y AI Harness (M2)
@@ -217,8 +217,8 @@ Cada spike tiene un resultado de tipo *sí/no/ajuste* y se documenta en un ADR.
 - **Puerta:** no hay vulnerabilidades críticas conocidas sin decisión explícita documentada.
 
 ### Fase 9 — Distribución (M6)
-- **Entregables:** instalación documentada, actualizaciones con migración y vuelta atrás, backups programados y restauración probada, guía de administración, diagnóstico de instalación, verificación de que nada sale a la nube sin acción del usuario.
-- **Puerta:** una instalación limpia se completa siguiendo la documentación y se recupera desde un backup probado.
+- **Entregables:** lanzador `edp.exe` (.NET self-contained) que detecta/arranca Docker Desktop, levanta el stack y abre la UI; instalador Windows con diagnóstico de prerequisitos (WSL2, Docker Desktop), actualizaciones con migración y vuelta atrás, backups programados y restauración probada, desinstalación limpia, guía de administración, verificación de que nada sale a la nube sin acción del usuario.
+- **Puerta:** una instalación limpia en una Windows 10/11 sin herramientas de desarrollo se completa con el instalador y se recupera desde un backup probado.
 
 ---
 
@@ -319,6 +319,7 @@ Prioridad: **P0** imprescindible para M3, **P1** necesario para v1.0, **P2** des
 | Conflicto de marca de ED Platform | Cambio de nombre tardío | Revisión de marcas y dominio antes de publicar; la reserva hecha para BerthIA no cubre el nuevo nombre |
 | Bus factor con equipo de 1 | Interrupción o abandono del proyecto | ADRs y documentación al día, decisiones registradas, alcance priorizado que permite pausas; revalidar el alcance si el equipo no crece |
 | Ruptura o cambio de API de un proveedor de IA | Failover degradado o costes inesperados | Interfaz agnóstica con adaptadores versionados, pruebas de contrato por proveedor, evaluación de IA al cambiar de modelo (§11) |
+| Dependencia de WSL2/Docker Desktop en el cliente | Instalación rota si falta o se actualiza mal | Diagnóstico de prerequisitos en el instalador, arranque guiado y verificación de salud (ADR-0011) |
 
 ---
 
@@ -404,6 +405,12 @@ Parches de completitud aplicados antes de abrir el repositorio; ninguno altera a
 2. **Entregables M0 completados**: requisitos con casos de uso (UC-01…12), backlog con 33 ítems P0 y criterios de aceptación, modelo de datos (12 entidades), matriz de permisos (IA como actor, L0–L3), modelo de amenazas STRIDE (8 fronteras) y registro de puerta [docs/puerta-m0.md](puerta-m0.md).
 3. **Stack confirmado por evidencia**: cola pg-boss v12 sobre PostgreSQL; terminal web xterm.js + puente WS↔SSH; Tauri descartado para la v1.0.
 4. **Puerta M0 cerrada (2026-10-13)** — siguiente: Fase 1 (Núcleo y UI, M1), con batería S1 y prueba de volcado sin secretos como regresión permanente.
+
+### v1.4
+1. **Distribución v1.0 = instalación en Windows** (ADR-0011, decisión del propietario): lanzador `edp.exe` (.NET 8 self-contained) + PostgreSQL en contenedor; decisiones 4 y 7 actualizadas; Fase 9 centrada en el instalador Windows (4–5 semanas); instalación Linux futura como P2.
+2. **UI sin cambios:** el `.exe` es lanzador/instalador — la interfaz sigue siendo web en el navegador (ADR-0010 se mantiene).
+3. **Validación por cambio:** reconstrucción de `edp.exe` + suite de tests local + health del compose (≈ minutos); instalador completo solo en puertas de fase.
+4. **Modelo de amenazas:** runtime Docker Desktop en v1.0 aceptado como riesgo residual explícito; riesgo nuevo §13 (dependencia WSL2/Docker Desktop).
 
 ---
 

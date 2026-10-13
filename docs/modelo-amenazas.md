@@ -98,7 +98,7 @@
 | Riesgo residual | Aceptación |
 |---|---|
 | Proveedor IA externo recibe contenido clasificado como `nube_con_exclusiones` | Compromiso del producto (decisión 14); el usuario elige por proyecto |
-| Docker Desktop (rootful en utility VM) en desarrollo | Solo desarrollo; producción exige rootless/Podman (ADR-0006) |
+| Docker Desktop (rootful en utility VM) como runtime de la v1.0 instalada en Windows | Aceptado explícitamente para v1.0 (usuario administrador de su propia máquina; alcance personal/equipo pequeño — ADR-0011); rootless/Podman se exige en la instalación Linux futura (ADR-0006) |
 | Rate limiting y firma de artefactos diferidos | P1/P2 del backlog; Fase 8/9 |
 | Turnstile de comandos destructivos dependiente de heurísticas | Se prueba en Fase 4 con batería de comandos peligrosos |
 
