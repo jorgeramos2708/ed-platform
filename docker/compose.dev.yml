@@ -26,6 +26,9 @@ services:
       PORT: "3100"
       DATABASE_URL: postgres://edp:edp_dev@postgres:5432/edp
       JWT_SECRET: edp-dev-secret-no-produccion # solo desarrollo; el instalador (ADR-0011) generará uno real
+      EDP_MASTER_KEY_FILE: /keys/master.key # clave maestra FUERA de la BD y del repo (S6/ADR-0005)
+    volumes:
+      - edp-keys:/keys
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,3 +40,4 @@ services:
 
 volumes:
   edp-pgdata:
+  edp-keys:
