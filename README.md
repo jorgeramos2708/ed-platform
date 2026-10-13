@@ -13,6 +13,9 @@ Plataforma **local-first** que unifica el ciclo completo de una aplicación: des
 | [Plan Maestro v1.2](docs/ED-Platform-Plan-Maestro.md) | Qué, cuándo, orden y decisiones (fases 0–9, hitos M0–M6, integraciones §19) |
 | [CONSTRAINTS.md](CONSTRAINTS.md) | Contrato de calidad — no negociable, manda sobre preferencias de implementación |
 | [Aplicación de prueba M3](docs/aplicacion-prueba-m3.md) | La app mínima (`notas-api`) que valida el primer flujo completo |
+| [Modelo de datos](docs/modelo-datos.md) | Entidades, estados reales y convenciones (entregable M0) |
+| [Matriz de permisos](docs/matriz-permisos.md) | Roles, autonomía de la IA y límites de confianza (entregable M0) |
+| [Modelo de amenazas](docs/modelo-amenazas.md) | STRIDE por frontera con evidencia de spikes (entregable M0) |
 | [ADRs](docs/adr/) | Decisiones de arquitectura (plantilla + registro) |
 
 ## Estructura del monorepo
