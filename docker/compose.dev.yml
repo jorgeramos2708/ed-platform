@@ -25,6 +25,7 @@ services:
     environment:
       PORT: "3100"
       DATABASE_URL: postgres://edp:edp_dev@postgres:5432/edp
+      JWT_SECRET: edp-dev-secret-no-produccion # solo desarrollo; el instalador (ADR-0011) generará uno real
     depends_on:
       postgres:
         condition: service_healthy

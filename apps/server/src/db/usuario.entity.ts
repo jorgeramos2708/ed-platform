@@ -21,6 +21,10 @@ export class Usuario {
   @Column({ type: 'enum', enum: RolUsuario, enumName: 'rol_usuario' })
   rol!: RolUsuario;
 
+  // Hash bcrypt — jamás en texto claro, jamás en logs (CONSTRAINTS §1.2)
+  @Column({ type: 'varchar' })
+  passwordHash!: string;
+
   @Column({ default: true })
   activo!: boolean;
 

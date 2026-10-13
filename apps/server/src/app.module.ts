@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from './auth/auth.module';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
 import { ProyectosController } from './proyectos/proyectos.controller';
@@ -16,7 +17,7 @@ import { Usuario } from './db/usuario.entity';
       entities: [Usuario, Proyecto, Auditoria],
       synchronize: true, // SOLO desarrollo; migraciones versionadas antes del cierre de M1
     }),
-    TypeOrmModule.forFeature([Proyecto, Auditoria]),
+    AuthModule,
   ],
   controllers: [HealthController, ProyectosController],
   providers: [HealthService, ProyectosService],

@@ -9,7 +9,11 @@ export class ProyectosService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   // Proyecto + auditoría en la MISMA transacción (modelo-datos, convención 3: compromiso 5 de trazabilidad)
-  async crear(dto: { nombre: string; repoUrl?: string }): Promise<Proyecto> {
+  async crear(
+    dto: { nombre: string; repoUrl?: string },
+    actor?: { id: string; tipo: ActorTipo },
+  ): Promise<Proyecto> {
+    const actorReal = actor ?? { id: 'sistema', tipo: ActorTipo.Sistema };
     return this.dataSource.transaction(async (em) => {
       const slug = await this.slugUnico(em, dto.nombre);
       const proyectos = em.getRepository(Proyecto);
@@ -18,13 +22,14 @@ export class ProyectosService {
           nombre: dto.nombre,
           slug,
           repoUrl: dto.repoUrl ?? null,
+          creadoPorId: actorReal.tipo === ActorTipo.Usuario ? actorReal.id : null,
         }),
       );
       const auditoria = em.getRepository(Auditoria);
       await auditoria.save(
         auditoria.create({
-          actorId: 'sistema',
-          actorTipo: ActorTipo.Sistema, // hasta auth (slice 3); después será el usuario autenticado
+          actorId: actorReal.id,
+          actorTipo: actorReal.tipo,
           accion: 'proyecto.crear',
           recursoTipo: 'proyecto',
           recursoId: proyecto.id,
