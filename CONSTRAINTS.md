@@ -1,6 +1,6 @@
 # CONSTRAINTS.md — Barra de calidad de ED Platform
 
-**Versión:** 1.1 · **Fuente:** Plan Maestro v1.2 (§11 Gobierno, §12 Pruebas, §13 Riesgos) · **Regla de vigencia:** cualquier bajada de umbral requiere ADR registrado. Este contrato manda sobre preferencias de implementación; la lente ponytail nunca recorta tests, validación, seguridad ni accesibilidad.
+**Versión:** 1.2 · **Fuente:** Plan Maestro v1.2 (§11 Gobierno, §12 Pruebas, §13 Riesgos) · **Regla de vigencia:** cualquier bajada de umbral requiere ADR registrado. Este contrato manda sobre preferencias de implementación; la lente ponytail nunca recorta tests, validación, seguridad ni accesibilidad.
 
 ---
 
@@ -26,7 +26,7 @@
 
 ## 3. Puerta de cada fase (fuente: §11 del plan)
 
-Salida solo con: criterios de aceptación cumplidos · pruebas pasando · revisión de seguridad de la fase hecha (no solo en la Fase 8) · riesgos documentados · errores críticos corregidos · **evidencia consultable** (comandos y salidas, no afirmaciones).
+Salida solo con: criterios de aceptación cumplidos · pruebas pasando · revisión de seguridad de la fase hecha (no solo en la Fase 8) · riesgos documentados · errores críticos corregidos · **evidencia consultable** (comandos y salidas, no afirmaciones) · commits de la fase empujados a `origin/main` (github.com/jorgeramos2708/ed-platform).
 
 ## 4. Definición de "hecho"
 

@@ -32,6 +32,7 @@ docs/             Plan maestro, aplicación de prueba M3
 - **Calidad:** `CONSTRAINTS.md` manda. Nada de `@ts-ignore`, tests saltados o umbrales bajados sin ADR. Atajos deliberados: comentario `shortcut: <límite>, <cuándo subirlo>`.
 - **Control de alcance:** nada nuevo entra en una fase en curso sin retirar algo equivalente; el backlog vive en el Plan Maestro §9.
 - **Commits atómicos** (~100 líneas), `main` siempre desplegable, ramas de vida corta.
+- **Cierre de fase:** cada fase (o hito) termina con commit y push a `origin/main` ([jorgeramos2708/ed-platform](https://github.com/jorgeramos2708/ed-platform)); las pruebas se ejecutan en local (CI propio llega en la Fase 5).
 
 ## Entorno de desarrollo
 
