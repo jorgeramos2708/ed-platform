@@ -1,7 +1,7 @@
 # ED Platform — Plan Maestro
 
-**Versión:** 1.2 (renombrado a ED Platform + integraciones candidatas — ver §18)
-**Estado:** Listo para ejecución (pendiente de validar spikes de la Fase 0)
+**Versión:** 1.3 (Fase 0 ejecutada — puerta M0 cerrada; ver §18 y docs/puerta-m0.md)
+**Estado:** Fase 0 completada — **puerta M0 cerrada** (2026-10-13); listo para iniciar la Fase 1
 **Documento complementario:** *ED-Platform-Arquitectura-y-Fases-v1.3.md* (detalle técnico, diagramas, seguridad, anexos; renombrar el archivo físico). Este plan maestro resume el qué, el cuándo, el orden y las decisiones; el documento de arquitectura es la referencia técnica.
 
 ---
@@ -398,6 +398,12 @@ Parches de completitud aplicados antes de abrir el repositorio; ninguno altera a
 4. **§19 ampliado con packs complementarios por rol:** skills de Pocock (288k), ECC (278k), gstack (136k), UI/UX pro-max (135k), caveman (111k), revisor open-code-review (47k, ya en el stack local), auditor de seguridad de Cloudflare (29k) y skills de seguridad de Trail of Bits (7,5k); graphify añadido a la Fase 2 (126k). Excluido por falta de licencia: andrej-karpathy-skills (219k). Con varios packs cargados, el AI Harness necesitará una política de precedencia entre packs.
 5. **Decisión 17 cerrada (licenciamiento):** Apache-2.0, elección intencional del propietario; registrada en ADR-0003. Remoto del repo: github.com/jorgeramos2708/ed-platform. Convención de trabajo: commit + push al cerrar cada fase, con pruebas locales.
 6. **Spikes S3 y S6 ejecutados con veredicto SÍ** (ADR-0004 y ADR-0005): cola confirmada — pg-boss v12 sobre PostgreSQL (stack §3 actualizado); cifrado por capas de secretos viable con clave maestra fuera de la BD.
+
+### v1.3
+1. **Spikes 7/7 con veredicto SÍ y ADR**: S1 (0006), S2 (0009), S3 (0004), S4 (0008, mecánica), S5 (0007, mecánica), S6 (0005), S7 (0010 — Tauri descartado para v1.0).
+2. **Entregables M0 completados**: requisitos con casos de uso (UC-01…12), backlog con 33 ítems P0 y criterios de aceptación, modelo de datos (12 entidades), matriz de permisos (IA como actor, L0–L3), modelo de amenazas STRIDE (8 fronteras) y registro de puerta [docs/puerta-m0.md](puerta-m0.md).
+3. **Stack confirmado por evidencia**: cola pg-boss v12 sobre PostgreSQL; terminal web xterm.js + puente WS↔SSH; Tauri descartado para la v1.0.
+4. **Puerta M0 cerrada (2026-10-13)** — siguiente: Fase 1 (Núcleo y UI, M1), con batería S1 y prueba de volcado sin secretos como regresión permanente.
 
 ---
 

@@ -4,7 +4,7 @@ Plataforma **local-first** que unifica el ciclo completo de una aplicación: des
 
 **Lema:** *Alinea, ejecuta, verifica, cierra.*
 
-> Estado: **Fase 0 en curso** (especificación y spikes). Referencia: [Plan Maestro v1.2](docs/ED-Platform-Plan-Maestro.md).
+> Estado: **Puerta M0 cerrada** (2026-10-13, 7/7 spikes SÍ) — listo para la **Fase 1** (Núcleo y UI). Referencia: [Plan Maestro v1.3](docs/ED-Platform-Plan-Maestro.md) · [Registro de la puerta](docs/puerta-m0.md).
 
 ## Documentación clave
 
