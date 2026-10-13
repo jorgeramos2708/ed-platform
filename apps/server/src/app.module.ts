@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
+import { ColaModule } from './cola/cola.module';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
 import { ProyectosController } from './proyectos/proyectos.controller';
@@ -18,6 +19,7 @@ import { Usuario } from './db/usuario.entity';
       synchronize: true, // SOLO desarrollo; migraciones versionadas antes del cierre de M1
     }),
     AuthModule,
+    ColaModule,
   ],
   controllers: [HealthController, ProyectosController],
   providers: [HealthService, ProyectosService],
