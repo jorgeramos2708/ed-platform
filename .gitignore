@@ -1,0 +1,29 @@
+# Dependencias
+node_modules/
+
+# Builds
+dist/
+build/
+.next/
+out/
+coverage/
+
+# Entorno y secretos — jamás en el repo (CONSTRAINTS §1.2)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Logs y temporales
+logs/
+*.log
+tmp/
+.cache/
+
+# Sistema / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
