@@ -1,4 +1,5 @@
-import { existsSync, randomBytes, readFileSync, writeFileSync } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
