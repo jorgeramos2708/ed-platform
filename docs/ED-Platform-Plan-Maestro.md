@@ -84,7 +84,7 @@ Estas decisiones cierran los puntos abiertos del documento de arquitectura. Pued
 ### Stack inicial (hipótesis a validar en la Fase 0)
 - **Interfaz:** React + TypeScript, Monaco Editor, xterm.js.
 - **Backend:** TypeScript (NestJS o equivalente).
-- **Datos:** PostgreSQL; cola de trabajos basada en PostgreSQL o Redis, según el resultado del spike de trabajos persistentes.
+- **Datos:** PostgreSQL; cola de trabajos con **pg-boss v12 sobre PostgreSQL** (spike S3, ADR-0004; Redis descartado para la v1.0).
 - **Git:** Git CLI.
 - **Aislamiento:** contenedores con límites de recursos; reforzar según el spike de seguridad.
 - **Servidores:** OpenSSH y SFTP.
@@ -397,6 +397,7 @@ Parches de completitud aplicados antes de abrir el repositorio; ninguno altera a
 3. **§19 ampliado con packs de skills:** nuevo patrón de integración "pack de skills del agente" y tabla transversal (superpowers 298k, anthropics/skills 181k, ponytail 162k, agent-skills 106k — todo MIT salvo verificar anthropics). Spike S4 pasa a validar la carga de skills (formato SKILL.md) y E05 incluye la capa de skills en P1.
 4. **§19 ampliado con packs complementarios por rol:** skills de Pocock (288k), ECC (278k), gstack (136k), UI/UX pro-max (135k), caveman (111k), revisor open-code-review (47k, ya en el stack local), auditor de seguridad de Cloudflare (29k) y skills de seguridad de Trail of Bits (7,5k); graphify añadido a la Fase 2 (126k). Excluido por falta de licencia: andrej-karpathy-skills (219k). Con varios packs cargados, el AI Harness necesitará una política de precedencia entre packs.
 5. **Decisión 17 cerrada (licenciamiento):** Apache-2.0, elección intencional del propietario; registrada en ADR-0003. Remoto del repo: github.com/jorgeramos2708/ed-platform. Convención de trabajo: commit + push al cerrar cada fase, con pruebas locales.
+6. **Spikes S3 y S6 ejecutados con veredicto SÍ** (ADR-0004 y ADR-0005): cola confirmada — pg-boss v12 sobre PostgreSQL (stack §3 actualizado); cifrado por capas de secretos viable con clave maestra fuera de la BD.
 
 ---
 

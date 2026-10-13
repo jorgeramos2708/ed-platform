@@ -1,0 +1,1 @@
+{ "name": "spike-s3-trabajos", "version": "0.0.0", "private": true, "type": "module", "dependencies": { "pg": "^8.13.0", "pg-boss": "^10.0.0" } }

@@ -21,6 +21,10 @@ logs/
 tmp/
 .cache/
 
+# Artefactos de spikes (evidencia local)
+spikes/**/volcado.sql
+spikes/**/job-id.txt
+
 # Sistema / IDE
 .DS_Store
 Thumbs.db
