@@ -78,7 +78,7 @@ Estas decisiones cierran los puntos abiertos del documento de arquitectura. Pued
 | 14 | Privacidad por defecto | Clasificación del proyecto al crearlo; IA externa con exclusión de archivos sensibles y redacción de secretos | Equilibrio entre utilidad y control |
 | 15 | Backups | Destino local o NAS, cifrados, con prueba de restauración | Sin dependencia de nube |
 | 16 | Modelos locales | Soportados como opción; no obligatorios | Depende del hardware |
-| 17 | Licenciamiento | A decidir en Fase 0 (opciones: open source —MIT/Apache-2.0/AGPL— o propietario) | Condiciona la distribución (Fase 9), la marca y los términos de uso de proveedores de IA |
+| 17 | Licenciamiento | **Cerrada: Apache-2.0** (ADR-0003; elección intencional del propietario, LICENSE en el repo) | Grant explícito de patentes; compatible con las dependencias MIT/Apache/BSD de §19 — los AGPL siguen limitados a sidecar |
 | 18 | Construir vs. integrar | Análisis explícito en Fase 0 para el AI Harness (E05) y el CI (E09): construir por defecto, salvo que un OSS maduro cubra la mayoría del alcance con licencia compatible | Evita reconstruir lo que ya existe; el spike S4 debe comparar contra frameworks de agente existentes |
 
 ### Stack inicial (hipótesis a validar en la Fase 0)
@@ -396,6 +396,7 @@ Parches de completitud aplicados antes de abrir el repositorio; ninguno altera a
 2. **Nuevo §19 — integraciones candidatas por fase:** herramientas OSS más populares de GitHub por fase del flujo, como insumo para la decisión 18 (construir vs. integrar). Foto de estrellas tomada de la API de GitHub (oct. 2026).
 3. **§19 ampliado con packs de skills:** nuevo patrón de integración "pack de skills del agente" y tabla transversal (superpowers 298k, anthropics/skills 181k, ponytail 162k, agent-skills 106k — todo MIT salvo verificar anthropics). Spike S4 pasa a validar la carga de skills (formato SKILL.md) y E05 incluye la capa de skills en P1.
 4. **§19 ampliado con packs complementarios por rol:** skills de Pocock (288k), ECC (278k), gstack (136k), UI/UX pro-max (135k), caveman (111k), revisor open-code-review (47k, ya en el stack local), auditor de seguridad de Cloudflare (29k) y skills de seguridad de Trail of Bits (7,5k); graphify añadido a la Fase 2 (126k). Excluido por falta de licencia: andrej-karpathy-skills (219k). Con varios packs cargados, el AI Harness necesitará una política de precedencia entre packs.
+5. **Decisión 17 cerrada (licenciamiento):** Apache-2.0, elección intencional del propietario; registrada en ADR-0003. Remoto del repo: github.com/jorgeramos2708/ed-platform. Convención de trabajo: commit + push al cerrar cada fase, con pruebas locales.
 
 ---
 
