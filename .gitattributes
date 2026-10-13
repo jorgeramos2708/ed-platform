@@ -1,0 +1,11 @@
+# Normalización de fines de línea — LF en el repo
+* text=auto eol=lf
+
+# Excepciones de plataforma
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# Binarios
+*.png binary
+*.jpg binary
+*.ico binary
