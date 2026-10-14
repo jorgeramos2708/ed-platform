@@ -11,6 +11,7 @@ services:
       - "5433:5432"
     volumes:
       - edp-pgdata:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U edp -d edp"]
       interval: 3s

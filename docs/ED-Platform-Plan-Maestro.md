@@ -1,7 +1,7 @@
 # ED Platform — Plan Maestro
 
-**Versión:** 1.4 (distribución v1.0 = instalación Windows con lanzador `edp.exe` — ver §18 y ADR-0011)
-**Estado:** Fase 0 completada — **puerta M0 cerrada** (2026-10-13); listo para iniciar la Fase 1
+**Versión:** 1.5 (Fase 1 ejecutada — puerta M1 cerrada; ver §18 y docs/puerta-m1.md)
+**Estado:** Fases 0–1 completadas — **puertas M0 y M1 cerradas** (2026-10-13); siguiente: Fase 2 (Workspace y AI Harness)
 **Documento complementario:** *ED-Platform-Arquitectura-y-Fases-v1.3.md* (detalle técnico, diagramas, seguridad, anexos; renombrar el archivo físico). Este plan maestro resume el qué, el cuándo, el orden y las decisiones; el documento de arquitectura es la referencia técnica.
 
 ---
@@ -411,6 +411,12 @@ Parches de completitud aplicados antes de abrir el repositorio; ninguno altera a
 2. **UI sin cambios:** el `.exe` es lanzador/instalador — la interfaz sigue siendo web en el navegador (ADR-0010 se mantiene).
 3. **Validación por cambio:** reconstrucción de `edp.exe` + suite de tests local + health del compose (≈ minutos); instalador completo solo en puertas de fase.
 4. **Modelo de amenazas:** runtime Docker Desktop en v1.0 aceptado como riesgo residual explícito; riesgo nuevo §13 (dependencia WSL2/Docker Desktop).
+
+### v1.5
+1. **Puerta M1 cerrada (2026-10-13):** reinicio real del stack verificado (proyectos, trabajos y usuarios persistidos y coherentes); secretos fuera de BD (pg_dump=0) y de logs (LoggerSeguro redacta). Registro: docs/puerta-m1.md.
+2. **Implementado en Fase 1:** NestJS 11 + TypeORM v1 con migraciones versionadas (synchronize prohibido), auth bcrypt+JWT con guards de matriz y denegaciones auditadas, proyectos con auditoría transaccional, cola pg-boss v12 con espejo de negocio y crash/re-entrega probado en la app, vault S6 con clave maestra en volumen, LoggerSeguro con sanitizador global, UI React (acceso + proyectos) con proxy same-origin, lanzador edp.exe abriendo la UI.
+3. **Suite:** server 33 tests (10 archivos, BD de tests `edp_test` aislada del despliegue) + web 5 tests + e2e Playwright+Edge contra el despliegue.
+4. **Deuda menor declarada en la puerta:** packages/shared placeholder, errores de cola vía LoggerSeguro, seed de admin en el instalador, workflow migration:generate.
 
 ---
 
