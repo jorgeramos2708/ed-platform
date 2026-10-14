@@ -1,78 +1,108 @@
-// edp.exe — lanzador de ED Platform (esqueleto Fase 1, ADR-0011)
-// up (por defecto): Docker OK -> compose up -> espera health -> abre la UI
-// stop: compose down
+// edp.exe — lanzador de ED Platform (ADR-0011)
+// up (por defecto): si la API ya responde, abre la UI directamente (sin tocar Docker);
+//                   si no: Docker OK -> compose up -> espera health -> abre la UI
+// build: reconstruye las imágenes (tras cambios de código) · stop: compose down
 using System.Diagnostics;
 
+const string Version = "1.3.0";
 var modo = args.Length > 0 ? args[0].ToLowerInvariant() : "up";
+
+static void Registrar(string mensaje)
+{
+    var linea = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {mensaje}";
+    Console.WriteLine(linea);
+    try { File.AppendAllText(Path.Combine(AppContext.BaseDirectory, "edp-log.txt"), linea + Environment.NewLine); } catch { /* el log no debe romper el lanzador */ }
+}
+
 var root = FindRepoRoot(AppContext.BaseDirectory)
     ?? throw new InvalidOperationException("No encuentro docker/compose.dev.yml — coloca edp.exe dentro del árbol del repositorio.");
 var composeArgs = $"compose -p edp -f \"{Path.Combine(root, "docker", "compose.dev.yml")}\"";
-var urlUI = "http://localhost:3101"; // la UI web (nginx la sirve; /api se proxea al backend)
-var healthUrl = "http://localhost:3100/api/health";
+var urlUI = "http://localhost:3101";
+// 127.0.0.1 explícito: 'localhost' puede resolver a ::1 y .NET HttpClient no alcanza el puerto
+// publicado de Docker en IPv6 (curl a 127.0.0.1 siempre funcionó — evidencia del incidente del lock)
+var healthUrl = "http://127.0.0.1:3100/api/health";
+using var http = new HttpClient(new System.Net.Http.HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(2) }; // el proxy del sistema rompe localhost (hallazgo del incidente)
 
-// build: reconstruye las imágenes (validación tras cambios de código) — el uso diario NO necesita build
+Registrar($"=== edp v{Version} (modo {modo}) ===");
+Registrar($"repo: {root}");
+
+// build: reconstruye las imágenes — solo tras cambios de código (lo diario no pasa por aquí)
 if (modo == "build")
 {
     Run("docker", composeArgs + " build");
-    Console.WriteLine("[edp] imágenes reconstruidas.");
+    Registrar("imágenes reconstruidas.");
     return;
 }
 
 if (modo == "stop")
 {
     Run("docker", composeArgs + " down");
-    Console.WriteLine("[edp] stack detenido.");
+    Registrar("stack detenido.");
     return;
 }
 
-// 1) Docker disponible — SIN lanzar segundas instancias: Docker Desktop rechaza el
-//    launcher.lock si otra instancia corre ("Access is denied"); si el backend ya vive, solo esperar
+// PASO 0: si la API ya responde, el stack está arriba — abrir la UI directamente.
+// Cero llamadas a Docker: el flujo diario del usuario jamás toca el builder ni el launcher.
+try
+{
+    var respuestaPaso0 = await http.GetAsync(healthUrl);
+    if (respuestaPaso0.IsSuccessStatusCode)
+    {
+        Registrar("la API ya responde — abriendo la UI directamente.");
+        Proceso(new ProcessStartInfo(urlUI) { UseShellExecute = true });
+        return;
+    }
+    Registrar($"paso 0: la API respondió {(int)respuestaPaso0.StatusCode} — seguimos con el arranque completo");
+}
+catch (Exception e)
+{
+    Registrar($"paso 0: la API no responde aún ({e.InnerException?.Message ?? e.Message}) — seguimos con el arranque completo");
+}
+
+// 1) Docker disponible — SIN lanzar segundas instancias (el launcher.lock se rechaza si otra vive)
 if (!DockerOk())
 {
     if (BackendCorriendo())
     {
-        Console.WriteLine("[edp] Docker Desktop ya se está ejecutando — esperando al engine...");
+        Registrar("Docker Desktop ya se está ejecutando — esperando al engine...");
     }
     else
     {
-        Console.WriteLine("[edp] Docker no responde — arrancando Docker Desktop...");
+        Registrar("Docker no responde — arrancando Docker Desktop...");
         var dd = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
             "Docker", "Docker", "Docker Desktop.exe");
-        if (!File.Exists(dd))
-            Console.WriteLine("[edp] Docker Desktop no está en la ruta habitual — instálalo o ábrelo manualmente.");
+        if (File.Exists(dd))
+            Proceso(new ProcessStartInfo(dd) { UseShellExecute = true });
         else
-            Process.Start(new ProcessStartInfo(dd) { UseShellExecute = true });
+            Registrar("Docker Desktop no está en la ruta habitual — ábrelo manualmente.");
     }
-    Console.WriteLine("[edp] esperando a Docker (el arranque en frío puede tardar ~2-4 min)...");
+    Registrar("esperando a Docker (el arranque en frío puede tardar ~2-4 min)...");
     if (!await Esperar(DockerOk, TimeSpan.FromSeconds(300)))
     {
-        Console.Error.WriteLine("[edp] Docker Desktop no quedó operativo a tiempo.");
-        Console.Error.WriteLine("[edp] Si viste 'launcher.lock: Access is denied': cierra TODAS las instancias desde la bandeja (Troubleshoot → Restart Docker Desktop) y reintenta.");
+        Registrar("FALLO: Docker Desktop no quedó operativo a tiempo.");
+        Registrar("Si viste 'launcher.lock: Access is denied': cierra TODAS las instancias desde la bandeja (Troubleshoot → Restart Docker Desktop) y reintenta.");
         Environment.Exit(1);
     }
 }
-Console.WriteLine("[edp] Docker OK.");
+Registrar("Docker OK.");
 
-// 2) Levantar el stack SIN rebuild (rápido y sin tocar el builder): `edp.exe build` reconstruye tras cambios
+// 2) Levantar el stack SIN rebuild (rápido y sin tocar el builder)
 Run("docker", composeArgs + " up -d");
 
 // 3) Esperar salud: comando terminado != aplicación saludable (CONSTRAINTS §1.5)
-Console.WriteLine($"[edp] esperando salud en {healthUrl} ...");
+Registrar($"esperando salud en {healthUrl} ...");
 if (!await EsperarSalud(healthUrl, TimeSpan.FromSeconds(240)))
 {
-    Console.Error.WriteLine("[edp] la API no llegó a salud a tiempo — revisa: docker compose -p edp logs");
+    Registrar("FALLO: la API no llegó a salud a tiempo — revisa: docker compose -p edp logs");
     Environment.Exit(1);
 }
-Console.WriteLine("[edp] API saludable.");
+Registrar("API saludable.");
 
-// 4) Abrir la UI web (login → proyectos)
-Console.WriteLine($"[edp] ED Platform arriba: {urlUI} (API: {healthUrl})");
-Process.Start(new ProcessStartInfo(urlUI) { UseShellExecute = true });
+// 4) Abrir la UI web
+Registrar($"ED Platform arriba: {urlUI}");
+Proceso(new ProcessStartInfo(urlUI) { UseShellExecute = true });
 
-// NOTA (hallazgo de entorno): bajo el sandbox del agente, los procesos nietos reciben
-// "permission denied" al abrir el named pipe de Docker (frontera documentada de DSH).
-// Fuera del sandbox (doble clic del usuario) funciona: el daemon y la ruta compose son válidos.
 static bool DockerOk()
 {
     try
@@ -83,21 +113,32 @@ static bool DockerOk()
             RedirectStandardError = true,
             UseShellExecute = false,
         });
-        var salida = p!.StandardOutput.ReadToEnd(); // leer antes de esperar: un pipe lleno sin lector bloquea el proceso
+        var salida = p!.StandardOutput.ReadToEnd(); // leer antes de esperar: un pipe lleno sin lector bloquea
         p.WaitForExit(15000);
         return p.HasExited && p.ExitCode == 0 && salida.Trim().Length > 0;
     }
     catch { return false; }
 }
 
-// El backend de Docker Desktop vive aunque la GUI se haya cerrado: si existe, NUNCA lanzar otra instancia
+// El backend de Docker Desktop vive aunque la GUI se cierre: si existe, NUNCA lanzar otra instancia
 static bool BackendCorriendo() => Process.GetProcessesByName("com.docker.backend").Length > 0;
+
+static void Proceso(ProcessStartInfo info) => Process.Start(info);
 
 static void Run(string exe, string args)
 {
-    var p = Process.Start(new ProcessStartInfo(exe, args) { UseShellExecute = false });
-    p!.WaitForExit();
-    if (p.ExitCode != 0) Environment.Exit(p.ExitCode);
+    var p = Process.Start(new ProcessStartInfo(exe, args)
+    {
+        RedirectStandardError = true,
+        UseShellExecute = false,
+    });
+    var err = p!.StandardError.ReadToEnd();
+    p.WaitForExit();
+    if (p.ExitCode != 0)
+    {
+        Registrar($"FALLO del comando: {exe} {args} (exit {p.ExitCode}) stderr: {err.Trim()}");
+        Environment.Exit(p.ExitCode);
+    }
 }
 
 static async Task<bool> Esperar(Func<bool> cond, TimeSpan max)
@@ -115,7 +156,7 @@ static async Task<bool> Esperar(Func<bool> cond, TimeSpan max)
 
 static async Task<bool> EsperarSalud(string url, TimeSpan max)
 {
-    using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+    using var http = new HttpClient(new System.Net.Http.HttpClientHandler { UseProxy = false }) { Timeout = TimeSpan.FromSeconds(3) };
     var fin = DateTime.UtcNow + max;
     while (DateTime.UtcNow < fin)
     {
