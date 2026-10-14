@@ -10,6 +10,14 @@ var composeArgs = $"compose -p edp -f \"{Path.Combine(root, "docker", "compose.d
 var urlUI = "http://localhost:3101"; // la UI web (nginx la sirve; /api se proxea al backend)
 var healthUrl = "http://localhost:3100/api/health";
 
+// build: reconstruye las imágenes (validación tras cambios de código) — el uso diario NO necesita build
+if (modo == "build")
+{
+    Run("docker", composeArgs + " build");
+    Console.WriteLine("[edp] imágenes reconstruidas.");
+    return;
+}
+
 if (modo == "stop")
 {
     Run("docker", composeArgs + " down");
@@ -46,8 +54,8 @@ if (!DockerOk())
 }
 Console.WriteLine("[edp] Docker OK.");
 
-// 2) Levantar el stack (recompila la imagen de la API — validación por cambio)
-Run("docker", composeArgs + " up -d --build");
+// 2) Levantar el stack SIN rebuild (rápido y sin tocar el builder): `edp.exe build` reconstruye tras cambios
+Run("docker", composeArgs + " up -d");
 
 // 3) Esperar salud: comando terminado != aplicación saludable (CONSTRAINTS §1.5)
 Console.WriteLine($"[edp] esperando salud en {healthUrl} ...");
