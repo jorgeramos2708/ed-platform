@@ -38,6 +38,15 @@ services:
       timeout: 3s
       retries: 30
 
+  web:
+    build:
+      context: ../apps/web
+    ports:
+      - "3101:80"
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   edp-pgdata:
   edp-keys:

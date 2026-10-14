@@ -7,6 +7,7 @@ var modo = args.Length > 0 ? args[0].ToLowerInvariant() : "up";
 var root = FindRepoRoot(AppContext.BaseDirectory)
     ?? throw new InvalidOperationException("No encuentro docker/compose.dev.yml — coloca edp.exe dentro del árbol del repositorio.");
 var composeArgs = $"compose -p edp -f \"{Path.Combine(root, "docker", "compose.dev.yml")}\"";
+var urlUI = "http://localhost:3101"; // la UI web (nginx la sirve; /api se proxea al backend)
 var healthUrl = "http://localhost:3100/api/health";
 
 if (modo == "stop")
@@ -48,9 +49,9 @@ if (!await EsperarSalud(healthUrl, TimeSpan.FromSeconds(240)))
 }
 Console.WriteLine("[edp] API saludable.");
 
-// 4) Abrir la UI (en Fase 1 v1: la API de salud; cuando exista apps/web se abrirá la UI)
-Console.WriteLine($"[edp] ED Platform arriba: {healthUrl}");
-Process.Start(new ProcessStartInfo(healthUrl) { UseShellExecute = true });
+// 4) Abrir la UI web (login → proyectos)
+Console.WriteLine($"[edp] ED Platform arriba: {urlUI} (API: {healthUrl})");
+Process.Start(new ProcessStartInfo(urlUI) { UseShellExecute = true });
 
 // NOTA (hallazgo de entorno): bajo el sandbox del agente, los procesos nietos reciben
 // "permission denied" al abrir el named pipe de Docker (frontera documentada de DSH).
