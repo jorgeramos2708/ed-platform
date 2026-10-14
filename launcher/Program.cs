@@ -17,21 +17,30 @@ if (modo == "stop")
     return;
 }
 
-// 1) Docker disponible (arranca Docker Desktop si hace falta)
+// 1) Docker disponible — SIN lanzar segundas instancias: Docker Desktop rechaza el
+//    launcher.lock si otra instancia corre ("Access is denied"); si el backend ya vive, solo esperar
 if (!DockerOk())
 {
-    Console.WriteLine("[edp] Docker no responde — arrancando Docker Desktop...");
-    var dd = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
-        "Docker", "Docker", "Docker Desktop.exe");
-    if (!File.Exists(dd))
-        Console.WriteLine("[edp] Docker Desktop no está en la ruta habitual — instálalo o ábrelo manualmente.");
-    else
-        Process.Start(new ProcessStartInfo(dd) { UseShellExecute = true });
-    Console.WriteLine("[edp] esperando a Docker (el arranque en frío puede tardar ~2-4 min)...");
-    if (!await Esperar(DockerOk, TimeSpan.FromSeconds(240)))
+    if (BackendCorriendo())
     {
-        Console.Error.WriteLine("[edp] Docker Desktop no quedó operativo a tiempo — ábrelo manualmente y reintenta.");
+        Console.WriteLine("[edp] Docker Desktop ya se está ejecutando — esperando al engine...");
+    }
+    else
+    {
+        Console.WriteLine("[edp] Docker no responde — arrancando Docker Desktop...");
+        var dd = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
+            "Docker", "Docker", "Docker Desktop.exe");
+        if (!File.Exists(dd))
+            Console.WriteLine("[edp] Docker Desktop no está en la ruta habitual — instálalo o ábrelo manualmente.");
+        else
+            Process.Start(new ProcessStartInfo(dd) { UseShellExecute = true });
+    }
+    Console.WriteLine("[edp] esperando a Docker (el arranque en frío puede tardar ~2-4 min)...");
+    if (!await Esperar(DockerOk, TimeSpan.FromSeconds(300)))
+    {
+        Console.Error.WriteLine("[edp] Docker Desktop no quedó operativo a tiempo.");
+        Console.Error.WriteLine("[edp] Si viste 'launcher.lock: Access is denied': cierra TODAS las instancias desde la bandeja (Troubleshoot → Restart Docker Desktop) y reintenta.");
         Environment.Exit(1);
     }
 }
@@ -72,6 +81,9 @@ static bool DockerOk()
     }
     catch { return false; }
 }
+
+// El backend de Docker Desktop vive aunque la GUI se haya cerrado: si existe, NUNCA lanzar otra instancia
+static bool BackendCorriendo() => Process.GetProcessesByName("com.docker.backend").Length > 0;
 
 static void Run(string exe, string args)
 {
