@@ -50,6 +50,7 @@ try
     {
         Registrar("la API ya responde — abriendo la UI directamente.");
         Proceso(new ProcessStartInfo(urlUI) { UseShellExecute = true });
+        FinalizarConMensaje("Todo listo — la plataforma ya estaba corriendo. Esta ventana puede cerrarse.");
         return;
     }
     Registrar($"paso 0: la API respondió {(int)respuestaPaso0.StatusCode} — seguimos con el arranque completo");
@@ -102,6 +103,7 @@ Registrar("API saludable.");
 // 4) Abrir la UI web
 Registrar($"ED Platform arriba: {urlUI}");
 Proceso(new ProcessStartInfo(urlUI) { UseShellExecute = true });
+FinalizarConMensaje("Todo listo — la plataforma sigue corriendo en segundo plano aunque cierre esta ventana. Para detenerla: edp.exe stop");
 
 static bool DockerOk()
 {
@@ -122,6 +124,15 @@ static bool DockerOk()
 
 // El backend de Docker Desktop vive aunque la GUI se cierre: si existe, NUNCA lanzar otra instancia
 static bool BackendCorriendo() => Process.GetProcessesByName("com.docker.backend").Length > 0;
+
+// El doble-cierto cierre instantáneo de la consola despista: mensaje final visible hasta que el usuario cierre
+static void FinalizarConMensaje(string mensaje)
+{
+    Console.WriteLine();
+    Console.WriteLine($"[edp] {mensaje}");
+    Console.Write("[edp] pulsa cualquier tecla para cerrar esta ventana...");
+    try { Console.ReadKey(true); } catch { /* sin consola interactiva (ejecución desde terminal) */ }
+}
 
 static void Proceso(ProcessStartInfo info) => Process.Start(info);
 
