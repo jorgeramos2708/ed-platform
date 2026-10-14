@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule, getRepositoryToken } from '@nestjs/typeorm';
+import { configuracionBd } from '../db/configuracion-bd';
 import { JwtModule } from '@nestjs/jwt';
 import { DataSource } from 'typeorm';
 import bcrypt from 'bcryptjs';
@@ -17,12 +18,7 @@ describe('UsuariosService (integración PostgreSQL)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
-        TypeOrmModule.forRoot({
-          type: 'postgres',
-          url: process.env.DATABASE_URL ?? 'postgres://edp:edp_dev@localhost:5433/edp',
-          entities: [Usuario, Auditoria],
-          synchronize: true,
-        }),
+        TypeOrmModule.forRoot(configuracionBd()),
         TypeOrmModule.forFeature([Usuario, Auditoria]),
         JwtModule.register({ secret: 'test-secret', signOptions: { expiresIn: '1h' } }),
       ],

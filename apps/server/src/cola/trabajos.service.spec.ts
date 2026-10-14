@@ -3,6 +3,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { configuracionBd } from '../db/configuracion-bd';
 import { DataSource } from 'typeorm';
 import { TrabajosService } from './trabajos.service';
 import { Trabajo } from '../db/trabajo.entity';
@@ -13,7 +14,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function moduloCola() {
   const ref = await Test.createTestingModule({
     imports: [
-      TypeOrmModule.forRoot({ type: 'postgres', url: DB, entities: [Trabajo], synchronize: true }),
+      TypeOrmModule.forRoot(configuracionBd()),
       TypeOrmModule.forFeature([Trabajo]),
     ],
     providers: [TrabajosService],

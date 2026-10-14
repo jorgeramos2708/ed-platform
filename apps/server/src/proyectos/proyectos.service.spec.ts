@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { configuracionBd } from '../db/configuracion-bd';
 import { DataSource } from 'typeorm';
 import { ProyectosService } from './proyectos.service';
 import { Proyecto } from '../db/proyecto.entity';
@@ -14,12 +15,7 @@ describe('ProyectosService (integración PostgreSQL)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [
-        TypeOrmModule.forRoot({
-          type: 'postgres',
-          url: process.env.DATABASE_URL ?? 'postgres://edp:edp_dev@localhost:5433/edp',
-          entities: [Proyecto, Auditoria],
-          synchronize: true,
-        }),
+        TypeOrmModule.forRoot(configuracionBd()),
         TypeOrmModule.forFeature([Proyecto, Auditoria]),
       ],
       providers: [ProyectosService],
