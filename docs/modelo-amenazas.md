@@ -33,7 +33,8 @@
 | T3.1 | El código de la tarea lee fuera de su workspace | I/E | Contenedor: solo bind del workspace, `cap-drop ALL`, `no-new-privileges`, rootfs read-only | **S1 verificado** (ADR-0006): 10 pruebas |
 | T3.2 | Exfiltración por red | I | `--network none` (o proxy de salida auditado cuando el proveedor lo exija) | **S1 verificado** |
 | T3.3 | Ataque a otros proyectos/propios controles | E | Sin docker.sock; sin caps; usuario no-root (Fase 1) | S1 + condición ADR-0006 |
-| T3.4 | Agotamiento de recursos del host | D | Límites memory/pids/CPU; OOM y fork-block verificados | **S1** (t8/t9) |
+| T3.4 | Agotamiento de recursos del host | D | Límites memory/pids/CPU; OOM y fork-block verificados | **S1** (t8/t9); regresión automática en la suite |
+| T3.4b | El orquestador (api) monta docker.sock para crear los workspaces | E | Riesgo residual ACEPTADO para v1.0: la API está autenticada, auditada y tras la matriz; los CONTENEDORES DE TAREA jamás reciben el socket (S1) | ADR-0006/0011; montaje documentado en compose (F2-1) |
 | T3.5 | Persistencia del trabajo tras reinicio inconsistente | T | Cola en PostgreSQL con re-entrega y estados reales | **S3 verificado** (ADR-0004) |
 
 ### F4 — Workspace → proveedor IA (única salida de datos)

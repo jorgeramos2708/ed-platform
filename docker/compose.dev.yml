@@ -28,8 +28,14 @@ services:
       DATABASE_URL: postgres://edp:edp_dev@postgres:5432/edp
       JWT_SECRET: edp-dev-secret-no-produccion # solo desarrollo; el instalador (ADR-0011) generará uno real
       EDP_MASTER_KEY_FILE: /keys/master.key # clave maestra FUERA de la BD y del repo (S6/ADR-0005)
+      EDP_WORKSPACES_ROOT: /workspaces
+      # la ruta que ve el DAEMON del volumen de workspaces (para los bind de los contenedores de tarea)
+      EDP_WORKSPACES_DAEMON_ROOT: /var/lib/docker/volumes/edp-workspaces/_data
+      EDP_WORKSPACE_IMAGE: edp-workspace-base
     volumes:
       - edp-keys:/keys
+      - edp-workspaces:/workspaces
+      - /var/run/docker.sock:/var/run/docker.sock # orquestador de workspaces (residual documentado en modelo-amenazas)
     depends_on:
       postgres:
         condition: service_healthy
@@ -38,6 +44,13 @@ services:
       interval: 3s
       timeout: 3s
       retries: 30
+
+  workspace-base:
+    build:
+      context: ../apps/workspace-base
+    image: edp-workspace-base
+    entrypoint: ["true"]
+    restart: "no"
 
   web:
     build:
@@ -51,3 +64,4 @@ services:
 volumes:
   edp-pgdata:
   edp-keys:
+  edp-workspaces:

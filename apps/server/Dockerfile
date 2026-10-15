@@ -13,6 +13,8 @@ RUN npm run build && npm prune --omit=dev
 FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production PORT=3100
+# docker-cli para orquestar los workspaces de tarea (hermanos) — el socket se monta vía compose
+RUN apk add --no-cache docker-cli
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY package.json ./

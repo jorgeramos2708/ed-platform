@@ -8,6 +8,7 @@ import { HealthService } from './health/health.service';
 import { ProyectosController } from './proyectos/proyectos.controller';
 import { ProyectosService } from './proyectos/proyectos.service';
 import { SecretosModule } from './secretos/secretos.module';
+import { WorkspacesModule } from './workspaces/workspaces.module';
 import { configuracionBd } from './db/configuracion-bd';
 
 @Module({
@@ -16,6 +17,7 @@ import { configuracionBd } from './db/configuracion-bd';
     AuthModule,
     ColaModule,
     SecretosModule,
+    WorkspacesModule,
     CoreModule,
   ],
   controllers: [HealthController, ProyectosController],
