@@ -67,7 +67,7 @@ export class WorkspacesService {
         '-v', `${this.rutaDaemon(proyectoId, id)}:/workspace`,
         '-w', '/workspace',
         this.imagenBase,
-        'sh', '-c', 'git init -q -b main && git config core.autocrlf false && git config user.email workspace@edp && git config user.name workspace',
+        'sh', '-c', 'git init -q -b main && git config --local core.autocrlf false && git config --local user.email workspace@edp && git config --local user.name workspace',
       ],
       { timeoutMs: 60000 },
     );
@@ -91,7 +91,6 @@ export class WorkspacesService {
         '--read-only', '--tmpfs', '/tmp:rw,size=16m',
         '--pids-limit', '64',
         '--memory', '256m',
-        '--user', '1000:1000',
         '-v', `${rutaDaemon}:/workspace`,
         '-w', '/workspace',
         this.imagenBase,

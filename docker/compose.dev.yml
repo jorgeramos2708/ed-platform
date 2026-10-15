@@ -7,6 +7,7 @@ services:
       POSTGRES_USER: edp
       POSTGRES_PASSWORD: edp_dev
       POSTGRES_DB: edp
+    restart: unless-stopped
     ports:
       - "5433:5432"
     volumes:
@@ -21,6 +22,7 @@ services:
   api:
     build:
       context: ../apps/server
+    restart: unless-stopped
     ports:
       - "3100:3100"
     environment:
@@ -55,6 +57,7 @@ services:
   web:
     build:
       context: ../apps/web
+    restart: unless-stopped
     ports:
       - "3101:80"
     depends_on:
