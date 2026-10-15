@@ -9,6 +9,7 @@ import { ProyectosController } from './proyectos/proyectos.controller';
 import { ProyectosService } from './proyectos/proyectos.service';
 import { SecretosModule } from './secretos/secretos.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
+import { CheckpointsModule } from './checkpoints/checkpoints.module';
 import { configuracionBd } from './db/configuracion-bd';
 
 @Module({
@@ -18,6 +19,7 @@ import { configuracionBd } from './db/configuracion-bd';
     ColaModule,
     SecretosModule,
     WorkspacesModule,
+    CheckpointsModule,
     CoreModule,
   ],
   controllers: [HealthController, ProyectosController],
