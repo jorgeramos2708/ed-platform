@@ -76,4 +76,14 @@ describe('HarnessService', () => {
       name: 'LimiteGastoError',
     });
   });
+
+  it('inyecta las reglas del proyecto en el mensaje del sistema', { timeout: 90000 }, async () => {
+    const ws = await workspaces.crear(proyectoId);
+    const proveedor = new ProveedorMock('principal', [planJson([{ accion: 'comando', comando: 'echo x' }])]);
+    const harness = new HarnessService(workspaces, checkpoints, [proveedor]);
+    await harness.generarPlan('tarea', { reglas: ['Usa TypeScript estricto y sin any'] });
+    const system = proveedor.solicitudes[0]?.mensajes.find((m) => m.rol === 'system');
+    expect(system?.contenido).toContain('Usa TypeScript estricto y sin any');
+    expect(system?.contenido).toContain('Reglas del proyecto');
+  });
 });

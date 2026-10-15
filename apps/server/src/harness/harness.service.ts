@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { CADENA_PROVEEDORES, LimiteGastoError, ProveedorIA, QuotaError, UsoTokens, sumarUso } from './proveedor-ia';
+import { promptDeReglas } from '../reglas/reglas.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { CheckpointsService } from '../checkpoints/checkpoints.service';
 
@@ -31,6 +32,7 @@ export interface ResultadoEjecucion {
 
 export interface OpcionesGasto {
   limiteTokens?: number;
+  reglas?: string[];
 }
 
 const PROMPT_SISTEMA =
@@ -54,7 +56,7 @@ export class HarnessService {
   async generarPlan(instruccion: string, opciones?: OpcionesGasto): Promise<PlanGenerado> {
     if (!this.proveedores.length) throw new Error('Sin proveedores de IA configurados (EDP_AI_API_KEY)');
     const mensajes: MensajeIA[] = [
-      { rol: 'system', contenido: PROMPT_SISTEMA },
+      { rol: 'system', contenido: PROMPT_SISTEMA + promptDeReglas((opciones?.reglas ?? []).map((texto, i) => ({ nombre: "regla-" + (i + 1), descripcion: texto, prioridad: 10 - i, contenido: texto, archivo: "regla" }))) },
       { rol: 'user', contenido: instruccion },
     ];
     let uso: UsoTokens = { entrada: 0, salida: 0 };
