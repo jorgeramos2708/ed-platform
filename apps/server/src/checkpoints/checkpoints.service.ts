@@ -64,9 +64,12 @@ export class CheckpointsService {
     return r.salida;
   }
 
-  // Cambios PENDIENTES (working tree vs último checkpoint) — lo que la UI muestra para aceptar/descartar
+  // Cambios PENDIENTES (staged vs último checkpoint) — lo que la UI muestra para aceptar/descartar.
+  // add -A + diff --cached: muestra TODO incluidos archivos nuevos (git 2.54: el -N intent-to-add
+  // NO aparece en diff HEAD — hallazgo del harness F2-3)
   async diffPendiente(proyectoId: string, wsId: string): Promise<string> {
-    return (await this.git(proyectoId, wsId, 'diff HEAD --unified=0')).salida;
+    await this.git(proyectoId, wsId, 'add -A');
+    return (await this.git(proyectoId, wsId, 'diff --cached HEAD --unified=0')).salida;
   }
 
   // Rewind EXACTO: reset --hard + clean de huérfanos; verificado por hash de HEAD y árbol limpio
@@ -83,7 +86,9 @@ export class CheckpointsService {
   }
 
   async estado(proyectoId: string, wsId: string): Promise<EstadoWorkspace> {
-    const head = (await this.git(proyectoId, wsId, 'rev-parse HEAD')).salida.trim();
+    const rev = await this.git(proyectoId, wsId, 'rev-parse HEAD');
+    if (rev.codigo !== 0) throw new Error('El workspace aún no tiene commits'); // repo recién init
+    const head = rev.salida.trim();
     const pendientes = (await this.git(proyectoId, wsId, 'status --porcelain')).salida.trim();
     return { head, limpio: pendientes.length === 0, pendientes };
   }
