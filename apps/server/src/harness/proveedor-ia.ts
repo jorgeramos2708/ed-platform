@@ -45,3 +45,6 @@ export class LimiteGastoError extends Error {
 export function sumarUso(a: UsoTokens, b: UsoTokens): UsoTokens {
   return { entrada: a.entrada + b.entrada, salida: a.salida + b.salida };
 }
+
+// Token de DI de la cadena de proveedores (en este archivo para evitar imports circulares)
+export const CADENA_PROVEEDORES = Symbol('CADENA_PROVEEDORES');

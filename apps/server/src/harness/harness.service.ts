@@ -1,11 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { LimiteGastoError, MensajeIA, ProveedorIA, QuotaError, UsoTokens, sumarUso } from './proveedor-ia';
+import { Inject, Injectable } from '@nestjs/common';
+import { CADENA_PROVEEDORES, LimiteGastoError, ProveedorIA, QuotaError, UsoTokens, sumarUso } from './proveedor-ia';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { CheckpointsService } from '../checkpoints/checkpoints.service';
 
-// Harness (E05): plan ANTES de ejecutar (decisión del usuario), ejecución determinista del plan
-// con checkpoints (S4), failover de proveedores con cuota tipificada (S5) y límite de gasto.
-// La aprobación del plan es del CALLER (chat/UI, F2-4) — el harness separa generarPlan/ejecutarPlan.
 export interface PasoPlan {
   accion: 'editar' | 'comando';
   archivo?: string;
@@ -46,8 +43,12 @@ export class HarnessService {
   constructor(
     private readonly workspaces: WorkspacesService,
     private readonly checkpoints: CheckpointsService,
-    private readonly proveedores: ProveedorIA[],
+    @Inject(CADENA_PROVEEDORES) private readonly proveedores: ProveedorIA[],
   ) {}
+
+  tieneProveedores(): boolean {
+    return this.proveedores.length > 0;
+  }
 
   // Genera el plan con failover (S5): cuota tipificada → siguiente proveedor; presupuesto acumulado
   async generarPlan(instruccion: string, opciones?: OpcionesGasto): Promise<PlanGenerado> {
@@ -69,7 +70,7 @@ export class HarnessService {
         return { plan: this.parsearPlan(respuesta.contenido), proveedor: proveedor.nombre, failover: i > 0, uso };
       } catch (e) {
         if (e instanceof QuotaError) {
-          ultimoError = e; // failover al siguiente (S5) — el estado previo no se pierde (no había ejecución)
+          ultimoError = e; // failover al siguiente (S5)
           continue;
         }
         throw e;

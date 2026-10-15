@@ -10,6 +10,7 @@ import { ProyectosService } from './proyectos/proyectos.service';
 import { SecretosModule } from './secretos/secretos.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { CheckpointsModule } from './checkpoints/checkpoints.module';
+import { HarnessModule } from './harness/harness.module';
 import { configuracionBd } from './db/configuracion-bd';
 
 @Module({
@@ -20,6 +21,7 @@ import { configuracionBd } from './db/configuracion-bd';
     SecretosModule,
     WorkspacesModule,
     CheckpointsModule,
+    HarnessModule,
     CoreModule,
   ],
   controllers: [HealthController, ProyectosController],
