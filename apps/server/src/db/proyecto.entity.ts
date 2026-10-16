@@ -20,6 +20,10 @@ export class Proyecto {
   @Column({ type: 'text', nullable: true })
   repoUrl!: string | null;
 
+  // Rama por defecto del remoto (Fase 3): 'main' por convención
+  @Column({ type: 'varchar', length: 64, default: 'main' })
+  ramaDefault!: string;
+
   @Column({
     type: 'enum',
     enum: ClasificacionProyecto,

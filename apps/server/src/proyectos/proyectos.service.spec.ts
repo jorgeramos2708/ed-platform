@@ -28,6 +28,36 @@ describe('ProyectosService (integración PostgreSQL)', () => {
     await dataSource.query('TRUNCATE proyectos, auditoria RESTART IDENTITY CASCADE');
   });
 
+  describe('actualizarRemoto (Fase 3: Git y remotos)', () => {
+    it('persiste repo_url y rama_default con auditoría', async () => {
+      const p = await service.crear({ nombre: 'Con Remoto' });
+      const actualizado = await service.actualizarRemoto(p.id, {
+        repoUrl: 'https://github.com/jorgeramos2708/edp-m3-test.git',
+        ramaDefault: 'main',
+      });
+      expect(actualizado.repoUrl).toBe('https://github.com/jorgeramos2708/edp-m3-test.git');
+      expect(actualizado.ramaDefault).toBe('main');
+      const fila = await dataSource.getRepository(Auditoria).findOneByOrFail({ recursoId: p.id, accion: 'proyecto.remoto.configurar' });
+      expect(fila.detalle).toBeTruthy();
+    });
+
+    it('rechaza repo_url que no sea https:// o git@ (frontera de seguridad)', async () => {
+      const p = await service.crear({ nombre: 'Url Rara' });
+      await expect(
+        service.actualizarRemoto(p.id, { repoUrl: 'file:///etc/passwd' }),
+      ).rejects.toThrow(/URL del remoto inválida/);
+      await expect(
+        service.actualizarRemoto(p.id, { repoUrl: 'http://inseguro.example/repo.git' }),
+      ).rejects.toThrow(/URL del remoto inválida/);
+    });
+
+    it('limpia el remoto con repoUrl null (proyecto solo local otra vez)', async () => {
+      const p = await service.crear({ nombre: 'Sin Remoto', repoUrl: 'https://github.com/x/y.git' });
+      const limpio = await service.actualizarRemoto(p.id, { repoUrl: null });
+      expect(limpio.repoUrl).toBeNull();
+    });
+  });
+
   it('crea un proyecto persistido con slug derivado del nombre', async () => {
     const p = await service.crear({ nombre: 'Mi Proyecto' });
     expect(p.id).toBeDefined();

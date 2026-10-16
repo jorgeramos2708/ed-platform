@@ -44,6 +44,42 @@ export class ProyectosService {
     return this.dataSource.getRepository(Proyecto).find({ order: { creadoEn: 'ASC' } });
   }
 
+  // Fase 3 (Git y remotos): configurar/cambiar el remoto del proyecto.
+  // La URL se valida (solo https:// o git@) — nunca file:// ni http:// (frontera de seguridad).
+  async actualizarRemoto(
+    proyectoId: string,
+    dto: { repoUrl: string | null; ramaDefault?: string },
+    actor?: { id: string; tipo: ActorTipo },
+  ): Promise<Proyecto> {
+    const actorReal = actor ?? { id: 'sistema', tipo: ActorTipo.Sistema };
+    const repoUrl = dto.repoUrl;
+    if (repoUrl && !/^https:\/\/[^\s]+\.git$/.test(repoUrl) && !/^git@[^\s:]+:[^\s]+\.git$/.test(repoUrl)) {
+      throw new Error(`URL del remoto inválida (solo https://…​.git o git@host:repo.git): ${repoUrl}`);
+    }
+    const rama = dto.ramaDefault?.trim() || undefined;
+    if (rama && !/^[A-Za-z0-9._/-]{1,64}$/.test(rama)) {
+      throw new Error(`Nombre de rama inválido: ${rama}`);
+    }
+    return this.dataSource.transaction(async (em) => {
+      const repo = em.getRepository(Proyecto);
+      const proyecto = await repo.findOneByOrFail({ id: proyectoId });
+      proyecto.repoUrl = repoUrl;
+      if (rama) proyecto.ramaDefault = rama;
+      const guardado = await repo.save(proyecto);
+      await em.getRepository(Auditoria).save(
+        em.getRepository(Auditoria).create({
+          actorId: actorReal.id,
+          actorTipo: actorReal.tipo,
+          accion: 'proyecto.remoto.configurar',
+          recursoTipo: 'proyecto',
+          recursoId: proyecto.id,
+          detalle: { repoUrl: guardado.repoUrl, ramaDefault: guardado.ramaDefault },
+        }),
+      );
+      return guardado;
+    });
+  }
+
   private async slugUnico(em: EntityManager, nombre: string): Promise<string> {
     const base = this.slugificar(nombre) || 'proyecto';
     let candidato = base;
