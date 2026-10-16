@@ -22,9 +22,15 @@ export class HarnessController {
 
   // Plan ANTES de ejecutar: la UI muestra el plan y solo llama a /ejecutar tras aprobarlo
   @Post('plan')
-  async plan(@Body() dto: { instruccion: string; limiteTokens?: number }) {
+  async plan(
+    @Param('proyectoId') proyectoId: string,
+    @Body() dto: { instruccion: string; limiteTokens?: number },
+  ) {
     this.exigirProveedores();
-    return this.servicioHarness.generarPlan(dto.instruccion, { limiteTokens: dto.limiteTokens });
+    return this.servicioHarness.generarPlan(dto.instruccion, {
+      limiteTokens: dto.limiteTokens,
+      proyectoId, // el gasto se registra y el límite aplica acumulado por proyecto (F2-5b)
+    });
   }
 
   @Post('ejecutar')

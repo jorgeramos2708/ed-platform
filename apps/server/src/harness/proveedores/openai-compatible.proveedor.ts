@@ -1,4 +1,4 @@
-import { QuotaError, RespuestaIA, SolicitudIA } from '../proveedor-ia';
+import { ProveedorIA, QuotaError, RespuestaIA, SolicitudIA } from '../proveedor-ia';
 
 // Funciona con OpenAI, DeepSeek y cualquier API compatible (decisión 3: interfaz agnóstica)
 export interface OpcionesOpenAICompatible {
@@ -9,7 +9,11 @@ export interface OpcionesOpenAICompatible {
 }
 
 export class ProveedorOpenAICompatible implements ProveedorIA {
-  constructor(private readonly opciones: OpcionesOpenAICompatible) {}
+  readonly nombre: string;
+
+  constructor(private readonly opciones: OpcionesOpenAICompatible) {
+    this.nombre = opciones.nombre;
+  }
 
   async ejecutar(solicitud: SolicitudIA): Promise<RespuestaIA> {
     const respuesta = await fetch(`${this.opciones.baseUrl}/chat/completions`, {

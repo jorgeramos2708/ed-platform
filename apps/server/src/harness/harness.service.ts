@@ -1,5 +1,5 @@
 import { Inject, Injectable, Optional } from '@nestjs/common';
-import { CADENA_PROVEEDORES, LimiteGastoError, ProveedorIA, QuotaError, UsoTokens, sumarUso } from './proveedor-ia';
+import { CADENA_PROVEEDORES, esErrorDeDisponibilidad, LimiteGastoError, MensajeIA, ProveedorIA, QuotaError, UsoTokens, sumarUso } from './proveedor-ia';
 import { promptDeReglas } from '../reglas/reglas.service';
 import { GastoService } from './gasto.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
@@ -91,11 +91,9 @@ export class HarnessService {
 
         return { plan: this.parsearPlan(respuesta.contenido), proveedor: proveedor.nombre, failover: i > 0, uso };
       } catch (e) {
-        if (e instanceof QuotaError) {
-          ultimoError = e; // failover al siguiente (S5)
-          continue;
-        }
-        throw e;
+        if (!esErrorDeDisponibilidad(e)) throw e; // cuota o proveedor caído → failover (S5)
+        ultimoError = e;
+        continue;
       }
     }
     throw ultimoError;

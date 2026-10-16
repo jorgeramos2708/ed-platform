@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CADENA_PROVEEDORES, MensajeIA } from './proveedor-ia';
+import { CADENA_PROVEEDORES, esErrorDeDisponibilidad, MensajeIA, ProveedorIA } from './proveedor-ia';
 
 // Chat conversacional por proyecto: el cliente mantiene el historial y envía los mensajes;
 // el servicio hace failover por la cadena (S5) y responde
@@ -18,9 +18,9 @@ export class ChatService {
         const r = await proveedor.ejecutar({ mensajes, maxTokens: 2048 });
         return { respuesta: r.contenido, proveedor: proveedor.nombre };
       } catch (e) {
-        if (!(e instanceof Error) || e.name !== 'QuotaError') throw e; // solo cuota hace failover
+        if (!esErrorDeDisponibilidad(e)) throw e; // solo cuota/indisponibilidad hacen failover
       }
     }
-    throw new Error('Todos los proveedores agotaron cuota');
+    throw new Error('Todos los proveedores agotaron cuota o están inalcanzables');
   }
 }

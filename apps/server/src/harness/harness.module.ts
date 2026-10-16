@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from '../auth/auth.module';
+import { GastoIa } from '../db/gasto-ia.entity';
 import { WorkspacesModule } from '../workspaces/workspaces.module';
 import { CheckpointsModule } from '../checkpoints/checkpoints.module';
+import { GastoService } from './gasto.service';
 import { ProveedorAnthropic } from './proveedores/anthropic.proveedor';
 import { CADENA_PROVEEDORES, ProveedorIA } from './proveedor-ia';
 import { ProveedorOpenAICompatible } from './proveedores/openai-compatible.proveedor';
@@ -44,11 +47,12 @@ function construirCadena(): ProveedorIA[] {
 
 // Los guards del controller resuelven desde ESTE módulo: necesita JwtService (AuthModule lo exporta)
 @Module({
-  imports: [WorkspacesModule, CheckpointsModule, AuthModule],
+  imports: [TypeOrmModule.forFeature([GastoIa]), WorkspacesModule, CheckpointsModule, AuthModule],
   controllers: [HarnessController],
   providers: [
     HarnessService,
     ChatService,
+    GastoService,
     { provide: CADENA_PROVEEDORES, useFactory: construirCadena },
   ],
   exports: [HarnessService, ChatService],

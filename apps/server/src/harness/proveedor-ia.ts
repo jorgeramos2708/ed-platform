@@ -46,5 +46,13 @@ export function sumarUso(a: UsoTokens, b: UsoTokens): UsoTokens {
   return { entrada: a.entrada + b.entrada, salida: a.salida + b.salida };
 }
 
+// ¿El error es de DISPONIBILIDAD del proveedor (caído, DNS, conexión)? → también failover (S5):
+// un proveedor inalcanzable no debe tumbar la tarea si hay respaldo. Los 4xx propios abortan.
+export function esErrorDeDisponibilidad(e: unknown): boolean {
+  if (e instanceof QuotaError) return true;
+  const causa = (e as { cause?: { code?: string } })?.cause?.code ?? '';
+  return ['ECONNREFUSED', 'ENOTFOUND', 'ECONNRESET', 'EAI_AGAIN', 'ETIMEDOUT'].includes(causa);
+}
+
 // Token de DI de la cadena de proveedores (en este archivo para evitar imports circulares)
 export const CADENA_PROVEEDORES = Symbol('CADENA_PROVEEDORES');

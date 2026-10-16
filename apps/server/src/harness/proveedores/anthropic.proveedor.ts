@@ -1,4 +1,4 @@
-import { QuotaError, RespuestaIA, SolicitudIA } from '../proveedor-ia';
+import { ProveedorIA, QuotaError, RespuestaIA, SolicitudIA } from '../proveedor-ia';
 
 export interface OpcionesAnthropic {
   nombre: string;
@@ -8,7 +8,11 @@ export interface OpcionesAnthropic {
 }
 
 export class ProveedorAnthropic implements ProveedorIA {
-  constructor(private readonly opciones: OpcionesAnthropic) {}
+  readonly nombre: string;
+
+  constructor(private readonly opciones: OpcionesAnthropic) {
+    this.nombre = opciones.nombre;
+  }
 
   async ejecutar(solicitud: SolicitudIA): Promise<RespuestaIA> {
     const baseUrl = this.opciones.baseUrl ?? 'https://api.anthropic.com';
