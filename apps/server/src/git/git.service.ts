@@ -76,10 +76,14 @@ export class GitService {
     env: Record<string, string>,
     timeoutMs = 240000,
   ): Promise<ResultadoComando> {
+    // redPuente: clone/push/pull contra remotos REALES necesitan salida a internet (https).
+    // Son comandos fijos construidos por este servicio con URL/rama validadas — el perfil
+    // sin red (S1) queda reservado a los comandos arbitrarios de los planes de la IA.
     return this.workspaces.ejecutar(proyectoId, workspaceId, comando, {
       extraBinds: this.bindDeRemotosDePrueba(),
       env,
       timeoutMs,
+      redPuente: true,
     });
   }
 
@@ -173,5 +177,31 @@ export class GitService {
     );
     if (r.codigo !== 0) throw new Error(`git branch falló: ${r.salidaError}`);
     return r.salida.split('\n').map((l) => l.trim()).filter(Boolean);
+  }
+
+  // F3-4: hash del extremo de la rama en el ORIGEN (sin workspace — contenedor efímero con red
+  // puente: los comandos git contra remotos REALES necesitan salida; son comandos fijos con
+  // URL/rama validadas, nunca ejecución arbitraria — el perfil sin red queda para tareas S1)
+  async remotoHead(
+    proyectoId: string,
+    url: string,
+    rama: string,
+    token?: string,
+  ): Promise<string> {
+    if (!RAMA_RE.test(rama)) throw new Error(`Nombre de rama inválido: ${rama}`);
+    if (url.startsWith('file://') && !process.env.EDP_GIT_REMOTOS_DIR) {
+      throw new Error('file:// solo está permitido en pruebas (EDP_GIT_REMOTOS_DIR definido)');
+    }
+    const { prefijo, env } = askpassPrefix(token);
+    const comando = `${prefijo}git ls-remote ${url} refs/heads/${rama}`;
+    const r = await this.workspaces.ejecutarEfimero(comando, {
+      env,
+      extraBinds: this.bindDeRemotosDePrueba(),
+      timeoutMs: 120000,
+    });
+    if (r.codigo !== 0) throw new Error(`git ls-remote falló: ${r.salidaError || r.salida}`);
+    const hash = r.salida.split('\t')[0]?.trim();
+    if (!/^[0-9a-f]{40}$/.test(hash)) throw new Error(`ls-remote no devolvió un hash válido para ${rama}`);
+    return hash;
   }
 }

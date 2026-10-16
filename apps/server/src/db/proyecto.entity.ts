@@ -24,6 +24,10 @@ export class Proyecto {
   @Column({ type: 'varchar', length: 64, default: 'main' })
   ramaDefault!: string;
 
+  // Último hash conocido del remoto (F3-4: el sondeo lo compara y audita avances)
+  @Column({ type: 'varchar', length: 40, nullable: true })
+  remotoHead!: string | null;
+
   @Column({
     type: 'enum',
     enum: ClasificacionProyecto,

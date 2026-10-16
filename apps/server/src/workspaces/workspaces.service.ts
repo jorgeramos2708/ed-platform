@@ -83,19 +83,20 @@ export class WorkspacesService {
     proyectoId: string,
     workspaceId: string,
     comando: string,
-    opciones?: { extraBinds?: string[]; env?: Record<string, string>; timeoutMs?: number },
+    opciones?: { extraBinds?: string[]; env?: Record<string, string>; timeoutMs?: number; redPuente?: boolean },
   ): Promise<ResultadoComando> {
     const rutaLocal = this.rutaLocal(proyectoId, workspaceId);
     if (!existsSync(rutaLocal)) throw new Error(`El workspace ${workspaceId} no existe`);
     const rutaDaemon = this.rutaDaemon(proyectoId, workspaceId);
-    // Banderas S1 completas (ADR-0006): red none, caps fuera, no-new-privileges, rootfs de solo
-    // lectura, tmpfs, límites de memoria/pids y SOLO el bind del workspace (+ extras explícitos,
-    // p. ej. el directorio de remotos de prueba read-only cuando EDP_GIT_REMOTOS_DIR está definido)
+    // Banderas S1 completas (ADR-0006): caps fuera, no-new-privileges, rootfs de solo lectura,
+    // tmpfs, límites de memoria/pids y SOLO el bind del workspace (+ extras explícitos).
+    // Sin red por defecto (S1). redPuente=true SOLO para comandos git fijos con URL/rama
+    // validadas (clone/push/pull contra remotos reales) — NUNCA para comandos arbitrarios.
     const r = spawnSync(
       'docker',
       [
         'run', '--rm',
-        '--network', 'none',
+        ...(opciones?.redPuente ? [] : ['--network', 'none']),
         '--cap-drop', 'ALL',
         '--security-opt', 'no-new-privileges',
         '--read-only', '--tmpfs', '/tmp:rw,size=16m',
@@ -111,6 +112,34 @@ export class WorkspacesService {
       { encoding: 'utf8', timeout: opciones?.timeoutMs ?? 90000 },
     );
     return { codigo: r.status ?? -1, salida: r.stdout ?? '', salidaError: r.stderr ?? '' };
+  }
+
+  // Contenedor efímero SIN workspace: para comandos fijos que no tocan archivos del workspace
+  // (p. ej. git ls-remote del sondeo). Mismo perfil S1 (ro rootfs, tmpfs, caps fuera) + red
+  // puente (el sondeo pregunta a remotos reales). Nada del host queda montado salvo binds
+  // explícitos (remotos de prueba).
+  ejecutarEfimero(
+    comando: string,
+    opciones?: { extraBinds?: string[]; env?: Record<string, string>; timeoutMs?: number },
+  ): Promise<ResultadoComando> {
+    const r = spawnSync(
+      'docker',
+      [
+        'run', '--rm',
+        '--cap-drop', 'ALL',
+        '--security-opt', 'no-new-privileges',
+        '--read-only', '--tmpfs', '/tmp:rw,size=16m',
+        '--pids-limit', '64',
+        '--memory', '256m',
+        ...(opciones?.extraBinds ?? []).flatMap((b) => ['-v', b]),
+        ...Object.entries(opciones?.env ?? {}).flatMap(([k, v]) => ['--env', `${k}=${v}`]),
+        '-w', '/tmp',
+        this.imagenBase,
+        'sh', '-c', comando,
+      ],
+      { encoding: 'utf8', timeout: opciones?.timeoutMs ?? 120000 },
+    );
+    return Promise.resolve({ codigo: r.status ?? -1, salida: r.stdout ?? '', salidaError: r.stderr ?? '' });
   }
 
   private rutaLocal(proyectoId: string, id: string): string {
