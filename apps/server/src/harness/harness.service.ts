@@ -1,6 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { CADENA_PROVEEDORES, LimiteGastoError, ProveedorIA, QuotaError, UsoTokens, sumarUso } from './proveedor-ia';
 import { promptDeReglas } from '../reglas/reglas.service';
+import { GastoService } from './gasto.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { CheckpointsService } from '../checkpoints/checkpoints.service';
 
@@ -33,6 +34,7 @@ export interface ResultadoEjecucion {
 export interface OpcionesGasto {
   limiteTokens?: number;
   reglas?: string[];
+  proyectoId?: string;
 }
 
 const PROMPT_SISTEMA =
@@ -46,6 +48,7 @@ export class HarnessService {
     private readonly workspaces: WorkspacesService,
     private readonly checkpoints: CheckpointsService,
     @Inject(CADENA_PROVEEDORES) private readonly proveedores: ProveedorIA[],
+    @Optional() private readonly gasto?: GastoService,
   ) {}
 
   tieneProveedores(): boolean {
@@ -68,7 +71,24 @@ export class HarnessService {
         const respuesta = await proveedor.ejecutar({ mensajes, maxTokens: 4096 });
         uso = sumarUso(uso, respuesta.uso);
         const limite = opciones?.limiteTokens;
-        if (limite && uso.entrada + uso.salida > limite) throw new LimiteGastoError(uso, limite);
+
+        // Gasto PERSISTENTE por proyecto (F2-5b): cada llamada se registra y el límite
+        // aplica sobre el total ACUMULADO del proyecto, no solo esta tarea
+        if (this.gasto && opciones?.proyectoId) {
+          await this.gasto.registrar(opciones.proyectoId, proveedor.nombre, respuesta.uso);
+          if (limite) {
+            const totalProyecto = await this.gasto.totalDelProyecto(opciones.proyectoId);
+            if (totalProyecto > limite) {
+              throw new LimiteGastoError(
+                { entrada: totalProyecto, salida: 0 },
+                limite,
+              );
+            }
+          }
+        } else if (limite && uso.entrada + uso.salida > limite) {
+          throw new LimiteGastoError(uso, limite);
+        }
+
         return { plan: this.parsearPlan(respuesta.contenido), proveedor: proveedor.nombre, failover: i > 0, uso };
       } catch (e) {
         if (e instanceof QuotaError) {

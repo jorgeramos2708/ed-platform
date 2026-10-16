@@ -1,21 +1,31 @@
 // RED: HarnessService — plan JSON (failover S5) + ejecución con checkpoints (S4) + límite de gasto
 import { describe, it, expect, beforeAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { Test } from '@nestjs/testing';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { CheckpointsService } from '../checkpoints/checkpoints.service';
+import { GastoService } from './gasto.service';
 import { HarnessService } from './harness.service';
 import { ProveedorMock } from './mock/proveedor-mock';
 import { QuotaError } from './proveedor-ia';
+import { configuracionBd } from '../db/configuracion-bd';
 
 const proyectoId = randomUUID();
 const workspaces = new WorkspacesService();
 const checkpoints = new CheckpointsService(workspaces);
+let dataSource: DataSource;
 
 function planJson(pasos: unknown[], titulo = 'plan de prueba'): string {
   return '```json\n' + JSON.stringify({ titulo, pasos }) + '\n```'; // con fences: prueba el parseo real de LLM
 }
 
 beforeAll(async () => {
+  const moduleRef = await Test.createTestingModule({
+    imports: [TypeOrmModule.forRoot(configuracionBd())],
+  }).compile();
+  dataSource = moduleRef.get(DataSource);
   await workspaces.asegurarImagenBase();
 }, 240000);
 
@@ -85,5 +95,32 @@ describe('HarnessService', () => {
     const system = proveedor.solicitudes[0]?.mensajes.find((m) => m.rol === 'system');
     expect(system?.contenido).toContain('Usa TypeScript estricto y sin any');
     expect(system?.contenido).toContain('Reglas del proyecto');
+  });
+
+  it('gasto persistente: el límite del proyecto aplica ACUMULADO (gasto previo + esta llamada)', { timeout: 90000 }, async () => {
+    const ws = await workspaces.crear(proyectoId);
+    const proveedor = new ProveedorMock('principal', [planJson([{ accion: 'comando', comando: 'echo x' }])]);
+    const gasto = new GastoService(dataSource);
+    await gasto.registrar(proyectoId, 'llamadas-previas', { entrada: 200, salida: 0 }); // gasto previo
+    const harness = new HarnessService(workspaces, checkpoints, [proveedor], gasto);
+
+    // esta llamada añade 150 → total 350 > límite 250 → aborta
+    await expect(
+      harness.generarPlan('tarea', { limiteTokens: 250, proyectoId }),
+    ).rejects.toMatchObject({ name: 'LimiteGastoError' });
+
+    // y el gasto de la llamada fallida TAMBIÉN quedó registrado (el proveedor sí consumió)
+    expect(await gasto.totalDelProyecto(proyectoId)).toBe(350);
+  });
+
+  it('gasto persistente: con presupuesto suficiente, la llamada registra y continúa', { timeout: 90000 }, async () => {
+    const ws = await workspaces.crear(proyectoId);
+    const proveedor = new ProveedorMock('principal', [planJson([{ accion: 'comando', comando: 'echo ok' }])]);
+    const gasto = new GastoService(dataSource);
+    const proyectoPropio = randomUUID(); // proyecto nuevo: gasto desde cero (el gasto es persistente)
+    const harness = new HarnessService(workspaces, checkpoints, [proveedor], gasto);
+
+    await harness.generarPlan('tarea', { limiteTokens: 1000, proyectoId: proyectoPropio });
+    expect(await gasto.totalDelProyecto(proyectoPropio)).toBe(150);
   });
 });
