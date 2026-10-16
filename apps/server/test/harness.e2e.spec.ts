@@ -17,6 +17,7 @@ describe('Harness API (e2e, plan antes de ejecutar)', () => {
   let app: INestApplication;
   let dataSource: DataSource;
   let token: string;
+  let pid: string;
   const proyectoId = 'e2e-harness';
 
   beforeAll(async () => {
@@ -47,11 +48,12 @@ describe('Harness API (e2e, plan antes de ejecutar)', () => {
       .send({ email: 'dev@ed.test', password: 'ClaveSegura-1' })
       .expect(200);
     token = login.body.token;
-    await request(app.getHttpServer())
+    const proyecto = await request(app.getHttpServer())
       .post('/api/proyectos')
       .set('Authorization', `Bearer ${token}`)
       .send({ nombre: proyectoId })
       .expect(201);
+    pid = proyecto.body.id as string;
   });
 
   afterAll(async () => {
@@ -60,7 +62,7 @@ describe('Harness API (e2e, plan antes de ejecutar)', () => {
 
   it('crea un workspace aislado para el proyecto', { timeout: 90000 }, async () => {
     const res = await request(app.getHttpServer())
-      .post(`/api/proyectos/${proyectoId}/workspaces`)
+      .post(`/api/proyectos/${pid}/workspaces`)
       .set('Authorization', `Bearer ${token}`)
       .expect(201);
     expect(res.body.id).toBeDefined();
@@ -68,13 +70,13 @@ describe('Harness API (e2e, plan antes de ejecutar)', () => {
 
   it('plan → ejecutar → diff con contenido; luego descartar → estado limpio', { timeout: 90000 }, async () => {
     const ws = await request(app.getHttpServer())
-      .post(`/api/proyectos/${proyectoId}/workspaces`)
+      .post(`/api/proyectos/${pid}/workspaces`)
       .set('Authorization', `Bearer ${token}`)
       .expect(201);
     const wsId = ws.body.id as string;
 
     const plan = await request(app.getHttpServer())
-      .post(`/api/proyectos/${proyectoId}/harness/plan`)
+      .post(`/api/proyectos/${pid}/harness/plan`)
       .set('Authorization', `Bearer ${token}`)
       .send({ workspaceId: wsId, instruccion: 'crea salida-ia.txt' })
       .expect(201);
@@ -82,7 +84,7 @@ describe('Harness API (e2e, plan antes de ejecutar)', () => {
     expect(plan.body.proveedor).toBe('mock');
 
     const ejecucion = await request(app.getHttpServer())
-      .post(`/api/proyectos/${proyectoId}/harness/ejecutar`)
+      .post(`/api/proyectos/${pid}/harness/ejecutar`)
       .set('Authorization', `Bearer ${token}`)
       .send({ workspaceId: wsId, plan: plan.body.plan })
       .expect(201);
@@ -90,12 +92,12 @@ describe('Harness API (e2e, plan antes de ejecutar)', () => {
 
     // descartar = rewind exacto al checkpoint inicial (S4)
     await request(app.getHttpServer())
-      .post(`/api/proyectos/${proyectoId}/harness/descartar`)
+      .post(`/api/proyectos/${pid}/harness/descartar`)
       .set('Authorization', `Bearer ${token}`)
       .send({ workspaceId: wsId, checkpointInicial: ejecucion.body.checkpointInicial })
       .expect(200);
     const estado = await request(app.getHttpServer())
-      .get(`/api/proyectos/${proyectoId}/workspaces/${wsId}/estado`)
+      .get(`/api/proyectos/${pid}/workspaces/${wsId}/estado`)
       .set('Authorization', `Bearer ${token}`)
       .expect(200);
     expect(estado.body.limpio).toBe(true);
@@ -103,11 +105,11 @@ describe('Harness API (e2e, plan antes de ejecutar)', () => {
 
   it('chat por proyecto responde con el proveedor configurado', { timeout: 90000 }, async () => {
     const ws = await request(app.getHttpServer())
-      .post(`/api/proyectos/${proyectoId}/workspaces`)
+      .post(`/api/proyectos/${pid}/workspaces`)
       .set('Authorization', `Bearer ${token}`)
       .expect(201);
     const res = await request(app.getHttpServer())
-      .post(`/api/proyectos/${proyectoId}/harness/chat`)
+      .post(`/api/proyectos/${pid}/harness/chat`)
       .set('Authorization', `Bearer ${token}`)
       .send({ mensajes: [{ rol: 'user', contenido: '¿cómo está el proyecto?' }] })
       .expect(201);

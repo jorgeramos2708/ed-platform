@@ -38,6 +38,12 @@ export class ReglasService {
     return reglas.sort((a, b) => b.prioridad - a.prioridad);
   }
 
+  // Las reglas de un proyecto viven en EDP_REGLAS_DIR/<proyectoId> (o ./reglas/<proyectoId> en dev)
+  cargarDeProyecto(proyectoId: string): ReglaProyecto[] {
+    const raiz = process.env.EDP_REGLAS_DIR ?? join(process.cwd(), 'reglas');
+    return this.cargar(join(raiz, proyectoId));
+  }
+
   // El bloque que se añade al prompt del sistema del harness
   promptDeReglas(reglas: ReglaProyecto[]): string {
     return promptDeReglas(reglas);

@@ -4,6 +4,7 @@ import { RolUsuario } from '../db/usuario.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { ReglasService } from '../reglas/reglas.service';
 import { ChatService } from './chat.service';
 import { HarnessService, PlanIA } from './harness.service';
 import { MensajeIA } from './proveedor-ia';
@@ -18,6 +19,7 @@ export class HarnessController {
   constructor(
     private readonly servicioHarness: HarnessService,
     private readonly servicioChat: ChatService,
+    private readonly reglas: ReglasService,
   ) {}
 
   // Plan ANTES de ejecutar: la UI muestra el plan y solo llama a /ejecutar tras aprobarlo
@@ -27,8 +29,10 @@ export class HarnessController {
     @Body() dto: { instruccion: string; limiteTokens?: number },
   ) {
     this.exigirProveedores();
+    const reglas = this.reglas.cargarDeProyecto(proyectoId).map((r) => r.contenido);
     return this.servicioHarness.generarPlan(dto.instruccion, {
       limiteTokens: dto.limiteTokens,
+      reglas, // las reglas del proyecto viajan en el prompt del sistema (F2-5a)
       proyectoId, // el gasto se registra y el límite aplica acumulado por proyecto (F2-5b)
     });
   }

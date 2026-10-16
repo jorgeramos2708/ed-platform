@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { ColaModule } from './cola/cola.module';
 import { CoreModule } from './core/core.module';
+import { ReglasModule } from './reglas/reglas.module';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
 import { ProyectosController } from './proyectos/proyectos.controller';
@@ -22,6 +23,7 @@ import { configuracionBd } from './db/configuracion-bd';
     WorkspacesModule,
     CheckpointsModule,
     HarnessModule,
+    ReglasModule,
     CoreModule,
   ],
   controllers: [HealthController, ProyectosController],
