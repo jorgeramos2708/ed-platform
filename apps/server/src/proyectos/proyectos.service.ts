@@ -44,6 +44,10 @@ export class ProyectosService {
     return this.dataSource.getRepository(Proyecto).find({ order: { creadoEn: 'ASC' } });
   }
 
+  async obtener(id: string): Promise<Proyecto> {
+    return this.dataSource.getRepository(Proyecto).findOneByOrFail({ id });
+  }
+
   // Fase 3 (Git y remotos): configurar/cambiar el remoto del proyecto.
   // La URL se valida (solo https:// o git@) — nunca file:// ni http:// (frontera de seguridad).
   async actualizarRemoto(

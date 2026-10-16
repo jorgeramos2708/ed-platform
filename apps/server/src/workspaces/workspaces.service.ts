@@ -51,10 +51,14 @@ export class WorkspacesService {
     return encontrado;
   }
 
-  async crear(proyectoId: string): Promise<WorkspaceInfo> {
+  async crear(proyectoId: string, opciones?: { gitInit?: boolean }): Promise<WorkspaceInfo> {
     const id = randomUUID();
     const ruta = this.rutaLocal(proyectoId, id);
     mkdirSync(ruta, { recursive: true });
+    if (opciones?.gitInit === false) {
+      // Fase 3: el workspace se llenará con `git clone` del remoto (GitService) — sin init vacío
+      return { id, proyectoId };
+    }
     // git init A TRAVÉS del contenedor base: el tooling del workspace vive en la imagen,
     // no en el host ni en el contenedor api (autocrlf=false — lección S4 del rewind exacto)
     const r = this.docker(
@@ -75,12 +79,18 @@ export class WorkspacesService {
     return { id, proyectoId };
   }
 
-  async ejecutar(proyectoId: string, workspaceId: string, comando: string): Promise<ResultadoComando> {
+  async ejecutar(
+    proyectoId: string,
+    workspaceId: string,
+    comando: string,
+    opciones?: { extraBinds?: string[]; env?: Record<string, string>; timeoutMs?: number },
+  ): Promise<ResultadoComando> {
     const rutaLocal = this.rutaLocal(proyectoId, workspaceId);
     if (!existsSync(rutaLocal)) throw new Error(`El workspace ${workspaceId} no existe`);
     const rutaDaemon = this.rutaDaemon(proyectoId, workspaceId);
     // Banderas S1 completas (ADR-0006): red none, caps fuera, no-new-privileges, rootfs de solo
-    // lectura, tmpfs, límites de memoria/pids y SOLO el bind del workspace
+    // lectura, tmpfs, límites de memoria/pids y SOLO el bind del workspace (+ extras explícitos,
+    // p. ej. el directorio de remotos de prueba read-only cuando EDP_GIT_REMOTOS_DIR está definido)
     const r = spawnSync(
       'docker',
       [
@@ -92,11 +102,13 @@ export class WorkspacesService {
         '--pids-limit', '64',
         '--memory', '256m',
         '-v', `${rutaDaemon}:/workspace`,
+        ...(opciones?.extraBinds ?? []).flatMap((b) => ['-v', b]),
+        ...Object.entries(opciones?.env ?? {}).flatMap(([k, v]) => ['--env', `${k}=${v}`]),
         '-w', '/workspace',
         this.imagenBase,
         'sh', '-c', comando,
       ],
-      { encoding: 'utf8', timeout: 90000 },
+      { encoding: 'utf8', timeout: opciones?.timeoutMs ?? 90000 },
     );
     return { codigo: r.status ?? -1, salida: r.stdout ?? '', salidaError: r.stderr ?? '' };
   }

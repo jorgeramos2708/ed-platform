@@ -6,8 +6,7 @@ import { CoreModule } from './core/core.module';
 import { ReglasModule } from './reglas/reglas.module';
 import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
-import { ProyectosController } from './proyectos/proyectos.controller';
-import { ProyectosService } from './proyectos/proyectos.service';
+import { ProyectosModule } from './proyectos/proyectos.module';
 import { SecretosModule } from './secretos/secretos.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { CheckpointsModule } from './checkpoints/checkpoints.module';
@@ -20,13 +19,14 @@ import { configuracionBd } from './db/configuracion-bd';
     AuthModule,
     ColaModule,
     SecretosModule,
+    ProyectosModule,
     WorkspacesModule,
     CheckpointsModule,
     HarnessModule,
     ReglasModule,
     CoreModule,
   ],
-  controllers: [HealthController, ProyectosController],
-  providers: [HealthService, ProyectosService],
+  controllers: [HealthController],
+  providers: [HealthService],
 })
 export class AppModule {}
