@@ -7,6 +7,8 @@ import { configuracionBd } from '../db/configuracion-bd';
 import { DataSource } from 'typeorm';
 import { TrabajosService } from './trabajos.service';
 import { Trabajo } from '../db/trabajo.entity';
+import { SanitizadorService } from '../secretos/sanitizador.service';
+import { LoggerSeguro } from '../core/logger-seguro.service';
 
 const DB = process.env.DATABASE_URL ?? 'postgres://edp:edp_dev@localhost:5433/edp';
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -17,7 +19,7 @@ async function moduloCola() {
       TypeOrmModule.forRoot(configuracionBd()),
       TypeOrmModule.forFeature([Trabajo]),
     ],
-    providers: [TrabajosService],
+    providers: [TrabajosService, SanitizadorService, LoggerSeguro],
   }).compile();
   const service = ref.get(TrabajosService);
   await service.onModuleInit(); // como haría Nest al arrancar

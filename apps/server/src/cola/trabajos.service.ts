@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { PgBoss } from 'pg-boss'; // v12: ESM con export nombrado (sin default)
 import { EstadoTrabajo, Trabajo } from '../db/trabajo.entity';
+import { LoggerSeguro } from '../core/logger-seguro.service';
 
 export type ManejadorTrabajo = (payload: Record<string, unknown>) => Promise<unknown>;
 
@@ -21,14 +22,17 @@ export class TrabajosService implements OnModuleInit, OnModuleDestroy {
   private boss?: PgBoss;
   private iniciado = false;
 
-  constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly logger: LoggerSeguro,
+  ) {}
 
   async onModuleInit() {
     this.boss = new PgBoss({
       connectionString: process.env.DATABASE_URL ?? 'postgres://edp:edp_dev@localhost:5433/edp',
       maintenanceIntervalSeconds: 2, // re-entrega rápida; en producción se usará el default
     });
-    this.boss.on('error', (e) => console.error('[cola]', e.message));
+    this.boss.on('error', (e) => this.logger.error(e.message, e.stack, 'Cola')); // deuda M1 #2: errores de cola vía LoggerSeguro
     await this.boss.start();
     this.iniciado = true;
     // Los módulos registran sus handlers explícitamente via registrarWorker (sin magia en el servicio)
