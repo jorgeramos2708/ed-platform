@@ -34,15 +34,15 @@ services:
       # la ruta que ve el DAEMON del volumen de workspaces (para los bind de los contenedores de tarea)
       EDP_WORKSPACES_DAEMON_ROOT: /var/lib/docker/volumes/edp-workspaces/_data
       EDP_WORKSPACE_IMAGE: edp-workspace-base
-      # mock-ai (DEV): proveedor principal + respaldo canned — el flujo M2 funciona sin API key real.
-      # Con una key real: EDP_AI_API_KEY + EDP_AI_BASE_URL reales y sin estos mocks.
-      EDP_AI_API_KEY: mock-dev-key
-      EDP_AI_BASE_URL: http://mock-ai
-      EDP_AI_NOMBRE: mock-principal
-      EDP_AI_MODELO: mock-model
-      EDP_AI_RESPALDO_API_KEY: mock-dev-key-2
-      EDP_AI_RESPALDO_BASE_URL: http://mock-ai-respaldo
-      EDP_AI_RESPALDO_NOMBRE: mock-respaldo
+      # Proveedor de IA: principal real (de docker/.env, gitignored) con fallback a mock-ai si no hay key.
+      # EDP_AI_RESPALDO_* queda en el mock para que el failover (S5) sea demostrable sin red.
+      EDP_AI_API_KEY: ${EDP_AI_API_KEY:-mock-dev-key}
+      EDP_AI_BASE_URL: ${EDP_AI_BASE_URL:-http://mock-ai}
+      EDP_AI_NOMBRE: ${EDP_AI_NOMBRE:-mock-principal}
+      EDP_AI_MODELO: ${EDP_AI_MODELO:-mock-model}
+      EDP_AI_RESPALDO_API_KEY: ${EDP_AI_RESPALDO_API_KEY:-mock-dev-key-2}
+      EDP_AI_RESPALDO_BASE_URL: ${EDP_AI_RESPALDO_BASE_URL:-http://mock-ai-respaldo}
+      EDP_AI_RESPALDO_NOMBRE: ${EDP_AI_RESPALDO_NOMBRE:-mock-respaldo}
     volumes:
       - edp-keys:/keys
       - edp-workspaces:/workspaces
