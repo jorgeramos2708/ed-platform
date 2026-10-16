@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, cerrarSesion, guardarToken, obtenerToken } from './api';
+import { VistaWorkspace } from './componentes/VistaWorkspace';
 
 interface Proyecto {
   id: string;
@@ -10,6 +11,7 @@ interface Proyecto {
 export function App() {
   const [token, setToken] = useState<string | null>(obtenerToken());
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+  const [proyectoAbierto, setProyectoAbierto] = useState<Proyecto | null>(null);
   const [error, setError] = useState('');
   const [modo, setModo] = useState<'login' | 'registro'>('login');
   const [email, setEmail] = useState('');
@@ -69,6 +71,17 @@ export function App() {
     cerrarSesion();
     setToken(null);
     setProyectos([]);
+  }
+
+  if (token && proyectoAbierto) {
+    return (
+      <VistaWorkspace
+        proyectoId={proyectoAbierto.id}
+        nombreProyecto={proyectoAbierto.nombre}
+        token={token}
+        alSalir={() => setProyectoAbierto(null)}
+      />
+    );
   }
 
   if (!token) {
@@ -133,7 +146,8 @@ export function App() {
       <ul data-testid="lista-proyectos">
         {proyectos.map((p) => (
           <li key={p.id}>
-            {p.nombre} <span className="slug">({p.slug})</span>
+            {p.nombre} <span className="slug">({p.slug})</span>{' '}
+            <button onClick={() => setProyectoAbierto(p)}>Abrir workspace</button>
           </li>
         ))}
         {proyectos.length === 0 && <li className="vacio">Sin proyectos todavía — crea el primero.</li>}
