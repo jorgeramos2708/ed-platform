@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, cerrarSesion, guardarToken, obtenerToken } from './api';
 import { VistaWorkspace } from './componentes/VistaWorkspace';
+import { VistaSecretos } from './componentes/VistaSecretos';
 
 interface Proyecto {
   id: string;
@@ -220,6 +221,7 @@ export function App() {
         ))}
         {proyectos.length === 0 && <li className="vacio">Sin proyectos todavía — crea el primero.</li>}
       </ul>
+      <VistaSecretos token={token} />
       {error && (
         <p role="alert" className="error">
           {error}
