@@ -10,6 +10,7 @@ function respuestaJson(datos: unknown, status = 200) {
 
 const mockFetchPorUrl = (rutas: Record<string, unknown>) =>
   vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+    // orden de inserción: las claves específicas (push/pull/historial) deben ir ANTES que '/workspaces'
     const clave = Object.keys(rutas).find((k) => url.includes(k));
     if (clave) return Promise.resolve(respuestaJson(rutas[clave]));
     return Promise.resolve(respuestaJson({}));
@@ -85,5 +86,37 @@ describe('VistaWorkspace', () => {
     await screen.findByTestId('panel-diff');
     await userEvent.click(screen.getByRole('button', { name: 'Descartar (rewind)' }));
     await screen.findByText(/tarea descartada/i);
+  });
+
+  describe('panel de git (Fase 3: workspace clonado de un remoto)', () => {
+    it('muestra historial y permite publicar cambios (push)', async () => {
+      const fetchFalso = mockFetchPorUrl({
+        '/historial': [{ hash: 'aaa111', asunto: 'commit de la IA' }],
+        '/push': { rechazado: false },
+        '/workspaces': { id: 'ws-1', clonado: true },
+      });
+      vi.stubGlobal('fetch', fetchFalso);
+      render(<VistaWorkspace proyectoId="p1" nombreProyecto="Mi Proyecto" token="tok" alSalir={() => {}} />);
+      await screen.findByTestId('panel-git');
+      await screen.findByText(/commit de la IA/);
+      await userEvent.click(screen.getByRole('button', { name: /publicar cambios/i }));
+      await screen.findByText(/cambios publicados en el origen/i);
+    });
+
+    it('push rechazado sugiere traer cambios; pull con conflicto muestra los archivos', async () => {
+      const fetchFalso = mockFetchPorUrl({
+        '/historial': [{ hash: 'aaa111', asunto: 'base' }],
+        '/push': { rechazado: true },
+        '/pull': { conflicto: true, archivosConflicto: ['compartido.txt'] },
+        '/workspaces': { id: 'ws-1', clonado: true },
+      });
+      vi.stubGlobal('fetch', fetchFalso);
+      render(<VistaWorkspace proyectoId="p1" nombreProyecto="Mi Proyecto" token="tok" alSalir={() => {}} />);
+      await screen.findByTestId('panel-git');
+      await userEvent.click(screen.getByRole('button', { name: /publicar cambios/i }));
+      await screen.findByText(/el origen avanzó.*trae los cambios/i);
+      await userEvent.click(screen.getByRole('button', { name: /traer cambios/i }));
+      await screen.findByText(/conflicto en: compartido\.txt/i);
+    });
   });
 });

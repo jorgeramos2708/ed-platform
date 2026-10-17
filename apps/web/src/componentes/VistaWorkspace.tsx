@@ -19,6 +19,11 @@ interface Mensaje {
   texto: string;
 }
 
+interface EntradaHistorial {
+  hash: string;
+  asunto: string;
+}
+
 interface Props {
   proyectoId: string;
   nombreProyecto: string;
@@ -27,8 +32,10 @@ interface Props {
 }
 
 // El flujo de M2: chat con la IA → plan mostrado ANTES de ejecutar → diff → aceptar o descartar (rewind)
+// Fase 3: si el workspace nace clonado de un remoto, panel de git (publicar/traer/historial)
 export function VistaWorkspace({ proyectoId, nombreProyecto, token, alSalir }: Props) {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [clonado, setClonado] = useState(false);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [mensajes, setMensajes] = useState<Mensaje[]>([]);
@@ -37,16 +44,22 @@ export function VistaWorkspace({ proyectoId, nombreProyecto, token, alSalir }: P
   const [plan, setPlan] = useState<PlanGenerado | null>(null);
   const [diff, setDiff] = useState<string | null>(null);
   const [checkpointInicial, setCheckpointInicial] = useState<string | null>(null);
+  const [historial, setHistorial] = useState<EntradaHistorial[]>([]);
+  const [mensajeGit, setMensajeGit] = useState('');
+  const [ocupadoGit, setOcupadoGit] = useState(false);
 
   useEffect(() => {
     let cancelado = false;
     (async () => {
       try {
-        const ws = await api<{ id: string }>(`/proyectos/${proyectoId}/workspaces`, {
+        const ws = await api<{ id: string; clonado?: boolean }>(`/proyectos/${proyectoId}/workspaces`, {
           metodo: 'POST',
           token,
         });
-        if (!cancelado) setWorkspaceId(ws.id);
+        if (!cancelado) {
+          setWorkspaceId(ws.id);
+          setClonado(Boolean(ws.clonado));
+        }
       } catch (e) {
         if (!cancelado) setError((e as Error).message);
       } finally {
@@ -122,6 +135,64 @@ export function VistaWorkspace({ proyectoId, nombreProyecto, token, alSalir }: P
       setMensajes((m) => [...m, { autor: 'sistema', texto: 'Tarea descartada — el workspace volvió al estado inicial.' }]);
     } catch (e) {
       setError((e as Error).message);
+    }
+  }
+
+  // Fase 3: panel de git (solo cuando el workspace nació clonado del remoto)
+  async function cargarHistorial() {
+    if (!workspaceId) return;
+    try {
+      setHistorial(await api<EntradaHistorial[]>(`/proyectos/${proyectoId}/workspaces/${workspaceId}/historial`, { token }));
+    } catch {
+      setHistorial([]); // workspace sin commits todavía
+    }
+  }
+
+  useEffect(() => {
+    if (workspaceId && clonado) void cargarHistorial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId, clonado]);
+
+  async function publicar() {
+    if (!workspaceId) return;
+    setOcupadoGit(true);
+    setMensajeGit('');
+    try {
+      const r = await api<{ rechazado?: boolean }>(`/proyectos/${proyectoId}/workspaces/${workspaceId}/push`, {
+        metodo: 'POST',
+        token,
+      });
+      setMensajeGit(
+        r.rechazado
+          ? 'El origen avanzó: trae los cambios antes de publicar.'
+          : 'Cambios publicados en el origen.',
+      );
+      if (!r.rechazado) await cargarHistorial();
+    } catch (e) {
+      setMensajeGit(`Error al publicar: ${(e as Error).message}`);
+    } finally {
+      setOcupadoGit(false);
+    }
+  }
+
+  async function traer() {
+    if (!workspaceId) return;
+    setOcupadoGit(true);
+    setMensajeGit('');
+    try {
+      const r = await api<{ conflicto?: boolean; archivosConflicto?: string[] }>(
+        `/proyectos/${proyectoId}/workspaces/${workspaceId}/pull`,
+        { metodo: 'POST', token },
+      );
+      setMensajeGit(
+        r.conflicto
+          ? `Conflicto en: ${(r.archivosConflicto ?? []).join(', ')}. Resuélvelo en el workspace antes de publicar.`
+          : 'Cambios del origen integrados.',
+      );
+    } catch (e) {
+      setMensajeGit(`Error al traer: ${(e as Error).message}`);
+    } finally {
+      setOcupadoGit(false);
     }
   }
 
@@ -233,6 +304,38 @@ export function VistaWorkspace({ proyectoId, nombreProyecto, token, alSalir }: P
               <button className="secundario" onClick={descartarTarea}>
                 Descartar (rewind)
               </button>
+            </section>
+          )}
+
+          {clonado && (
+            <section data-testid="panel-git">
+              <h3>Sincronización con el origen</h3>
+              <div className="fila">
+                <button onClick={publicar} disabled={ocupadoGit}>
+                  Publicar cambios
+                </button>
+                <button className="secundario" onClick={traer} disabled={ocupadoGit}>
+                  Traer cambios
+                </button>
+              </div>
+              {mensajeGit && (
+                <p role="status">
+                  {mensajeGit}
+                </p>
+              )}
+              {historial.length > 0 ? (
+                <ul aria-label="Historial de commits">
+                  {historial.map((h) => (
+                    <li key={h.hash}>
+                      <code>{h.hash.slice(0, 7)}</code> {h.asunto}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="vacio" role="status">
+                  Sin commits todavía.
+                </p>
+              )}
             </section>
           )}
         </>
