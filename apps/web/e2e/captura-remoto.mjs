@@ -1,0 +1,22 @@
+import { chromium } from 'playwright-core';
+
+const b = await chromium.launch({ channel: 'msedge', headless: true });
+const p = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+await p.goto('http://localhost:3101/');
+await p.getByTestId('panel-acceso').waitFor({ timeout: 10000 });
+await p.getByRole('tab', { name: 'Crear cuenta' }).click();
+await p.locator('#email').fill(`remoto-${Date.now()}@ed.test`);
+await p.locator('#nombre').fill('Remoto UI');
+await p.locator('#password').fill('ClaveSegura-1');
+await p.getByRole('button', { name: 'Crear cuenta' }).click();
+await p.getByTestId('panel-proyectos').waitFor({ timeout: 10000 });
+await p.locator('#nombre-proyecto').fill('Con Remoto');
+await p.getByRole('button', { name: 'Crear' }).click();
+await p.getByRole('button', { name: 'Remoto' }).first().click();
+await p.getByLabel('URL del remoto').fill('https://github.com/ejemplo/repo.git');
+await p.screenshot({ path: 'apps/web/e2e/capturas/remoto-form.png' });
+await p.getByRole('button', { name: 'Guardar remoto' }).click();
+await p.getByText(/github\.com\/ejemplo\/repo\.git/).waitFor({ timeout: 10000 });
+await p.screenshot({ path: 'apps/web/e2e/capturas/remoto-guardado.png' });
+await b.close();
+console.log('capturas remoto ok');

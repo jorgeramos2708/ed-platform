@@ -6,6 +6,8 @@ interface Proyecto {
   id: string;
   nombre: string;
   slug: string;
+  repoUrl?: string | null;
+  ramaDefault?: string;
 }
 
 export function App() {
