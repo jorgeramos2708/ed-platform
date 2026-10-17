@@ -28,7 +28,7 @@ export class ProyectosController {
   @Roles(RolUsuario.Admin, RolUsuario.Desarrollador)
   async configurarRemoto(
     @Param('id') id: string,
-    @Body() dto: { repoUrl: string | null; ramaDefault?: string },
+    @Body() dto: { repoUrl: string | null; ramaDefault?: string; repoCredencial?: string },
     @Request() req: { usuario: { sub: string } },
   ) {
     return this.proyectos.actualizarRemoto(id, dto, {

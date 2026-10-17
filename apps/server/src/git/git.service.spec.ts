@@ -67,9 +67,10 @@ describe('GitService — clonar el remoto en el workspace', () => {
     const token = 'ghp_secreto-supersecreto-123456';
     const { comando, env } = construirComandoClonar('https://github.com/org/repo.git', 'main', token);
     expect(comando).not.toContain(token); // el comando sh no contiene el token
-    expect(comando).toContain('GIT_ASKPASS=/tmp/askpass.sh'); // la credencial via askpass
+    expect(comando).toContain('credential.helper'); // la credencial via helper inline
+    expect(comando).toContain('$GIT_TOKEN'); // el comando referencia la VARIABLE, no el valor
     expect(env.GIT_TOKEN).toBe(token); // el token via env del contenedor efímero (documentado)
-    expect(comando).toContain('git clone -b main https://github.com/org/repo.git /workspace');
+    expect(comando).toContain('clone -b main https://github.com/org/repo.git /workspace');
   });
 
   it('pull y push con token: el token NUNCA va en el comando', () => {

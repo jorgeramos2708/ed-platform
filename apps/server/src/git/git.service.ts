@@ -21,16 +21,14 @@ export interface EntradaHistorial {
   asunto: string;
 }
 
-// Prefijo compartido: prepara el askpass en el tmpfs del contenedor y desactiva prompts de TTY.
-// El token vive SOLO en el env del contenedor; el comando del shell solo referencia $GIT_TOKEN.
-function askpassPrefix(token?: string): { prefijo: string; env: Record<string, string> } {
-  if (!token) return { prefijo: 'GIT_TERMINAL_PROMPT=0 ', env: {} };
-  return {
-    prefijo:
-      `printf '%s\\n' '#!/bin/sh' '[ "$1" = "Password" ] && echo "$GIT_TOKEN" || echo x' > /tmp/askpass.sh && chmod +x /tmp/askpass.sh && ` +
-      'GIT_ASKPASS=/tmp/askpass.sh GIT_TERMINAL_PROMPT=0 ',
-    env: { GIT_TOKEN: token },
-  };
+// Credential helper INLINE (función shell, cero archivos — Docker monta /tmp con noexec y un
+// script askpass no podría ejecutarse). El token vive SOLO en el env del contenedor; el comando
+// referencia $GIT_TOKEN literal (jamás el valor).
+const GIT_CON_CREDENCIAL =
+  "git -c credential.helper='!f() { echo username=x; echo password=$GIT_TOKEN; }; f' ";
+
+function envDeCredencial(token?: string): Record<string, string> {
+  return token ? { GIT_TOKEN: token } : {};
 }
 
 export function construirComandoClonar(
@@ -39,20 +37,20 @@ export function construirComandoClonar(
   token?: string,
 ): { comando: string; env: Record<string, string> } {
   const ramaValida = rama && /^[A-Za-z0-9._/-]{1,64}$/.test(rama) ? rama : undefined;
-  const { prefijo, env } = askpassPrefix(token);
-  const comando = `${prefijo}git clone ${ramaValida ? `-b ${ramaValida} ` : ''}${url} /workspace`;
-  return { comando, env };
+  const git = token ? GIT_CON_CREDENCIAL : 'git ';
+  const comando = `GIT_TERMINAL_PROMPT=0 ${git}clone ${ramaValida ? `-b ${ramaValida} ` : ''}${url} /workspace`;
+  return { comando, env: envDeCredencial(token) };
 }
 
 export function construirComandoPush(token?: string): { comando: string; env: Record<string, string> } {
-  const { prefijo, env } = askpassPrefix(token);
-  return { comando: `${prefijo}git push origin HEAD`, env };
+  const git = token ? GIT_CON_CREDENCIAL : 'git ';
+  return { comando: `GIT_TERMINAL_PROMPT=0 ${git}push origin HEAD`, env: envDeCredencial(token) };
 }
 
 export function construirComandoPull(rama: string, token?: string): { comando: string; env: Record<string, string> } {
-  const { prefijo, env } = askpassPrefix(token);
+  const git = token ? GIT_CON_CREDENCIAL : 'git ';
   // --rebase: historia lineal; si hay conflicto el servicio lo detecta y aborta (trabajo intacto)
-  return { comando: `${prefijo}git pull --rebase origin ${rama}`, env };
+  return { comando: `GIT_TERMINAL_PROMPT=0 ${git}pull --rebase origin ${rama}`, env: envDeCredencial(token) };
 }
 
 const RAMA_RE = /^[A-Za-z0-9._/-]{1,64}$/;
@@ -96,7 +94,11 @@ export class GitService {
       throw new Error('file:// solo está permitido en pruebas (EDP_GIT_REMOTOS_DIR definido)');
     }
     const { comando, env } = construirComandoClonar(dto.url, dto.rama, dto.token);
-    const r = await this.gitRemoto(proyectoId, workspaceId, comando, env);
+    let r = await this.gitRemoto(proyectoId, workspaceId, comando, env);
+    if (r.codigo !== 0 && dto.rama && /Remote branch .* not found/i.test(`${r.salidaError}${r.salida}`)) {
+      // Repo recién creado SIN ramas todavía: clon simple — el primer commit creará la rama al pushear
+      r = await this.gitRemoto(proyectoId, workspaceId, construirComandoClonar(dto.url, undefined, dto.token).comando, env);
+    }
     if (r.codigo !== 0) {
       // La salida puede contener la URL pero JAMÁS el token (no está en el comando)
       throw new Error(`git clone falló: ${r.salidaError || r.salida}`);
@@ -192,8 +194,9 @@ export class GitService {
     if (url.startsWith('file://') && !process.env.EDP_GIT_REMOTOS_DIR) {
       throw new Error('file:// solo está permitido en pruebas (EDP_GIT_REMOTOS_DIR definido)');
     }
-    const { prefijo, env } = askpassPrefix(token);
-    const comando = `${prefijo}git ls-remote ${url} refs/heads/${rama}`;
+    const git = token ? GIT_CON_CREDENCIAL : 'git ';
+    const env = envDeCredencial(token);
+    const comando = `GIT_TERMINAL_PROMPT=0 ${git}ls-remote ${url} refs/heads/${rama}`;
     const r = await this.workspaces.ejecutarEfimero(comando, {
       env,
       extraBinds: this.bindDeRemotosDePrueba(),

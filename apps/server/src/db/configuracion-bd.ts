@@ -2,6 +2,7 @@ import { MigracionInicial1771000000000 } from '../migrations/0001-migracion-inic
 import { GastoIaMigracion1771000000001 } from '../migrations/0002-gasto-ia.migration';
 import { ProyectoRamaDefaultMigracion1771000000002 } from '../migrations/0003-proyecto-rama-default.migration';
 import { ProyectoRemotoHeadMigracion1771000000003 } from '../migrations/0004-proyecto-remoto-head.migration';
+import { ProyectoRepoCredencialMigracion1771000000004 } from '../migrations/0005-proyecto-repo-credencial.migration';
 import { Auditoria } from './auditoria.entity';
 import { GastoIa } from './gasto-ia.entity';
 import { Proyecto } from './proyecto.entity';
@@ -22,6 +23,7 @@ export function configuracionBd() {
       GastoIaMigracion1771000000001,
       ProyectoRamaDefaultMigracion1771000000002,
       ProyectoRemotoHeadMigracion1771000000003,
+      ProyectoRepoCredencialMigracion1771000000004,
     ],
     migrationsRun: true,
     synchronize: false,

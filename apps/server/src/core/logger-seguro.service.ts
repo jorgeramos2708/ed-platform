@@ -45,12 +45,22 @@ export class LoggerSeguro implements LoggerService {
   }
 
   private emitir(nivel: string, mensaje: unknown, contexto?: string, datos?: unknown): void {
+    // Nest puede pasar el OBJETO Error (no el string): Object.entries(Error) = {} y el log
+    // perdería el diagnóstico. Extraer message/stack de errores reales (sanitizados igual).
+    const esError = mensaje instanceof Error;
     const linea: LineaLog = {
       ts: new Date().toISOString(),
       nivel,
       ...(contexto ? { contexto } : {}),
-      mensaje: this.sanitizador.sanitizar(mensaje),
-      ...(datos ? { datos: this.sanitizador.sanitizar(datos) } : {}),
+      mensaje: this.sanitizador.sanitizar(esError ? mensaje.message : mensaje),
+      ...(datos || esError
+        ? {
+            datos: this.sanitizador.sanitizar({
+              ...(esError && mensaje.stack ? { traza: mensaje.stack } : {}),
+              ...((datos as Record<string, unknown>) ?? {}),
+            }),
+          }
+        : {}),
     };
     this.escribir(JSON.stringify(linea));
   }

@@ -52,7 +52,7 @@ export class ProyectosService {
   // La URL se valida (solo https:// o git@) — nunca file:// ni http:// (frontera de seguridad).
   async actualizarRemoto(
     proyectoId: string,
-    dto: { repoUrl: string | null; ramaDefault?: string },
+    dto: { repoUrl: string | null; ramaDefault?: string; repoCredencial?: string },
     actor?: { id: string; tipo: ActorTipo },
   ): Promise<Proyecto> {
     const actorReal = actor ?? { id: 'sistema', tipo: ActorTipo.Sistema };
@@ -71,11 +71,16 @@ export class ProyectosService {
     if (rama && !/^[A-Za-z0-9._/-]{1,64}$/.test(rama)) {
       throw new Error(`Nombre de rama inválido: ${rama}`);
     }
+    const credencial = (dto as { repoCredencial?: string }).repoCredencial?.trim() || undefined;
+    if (credencial && !/^[A-Za-z0-9._-]{1,64}$/.test(credencial)) {
+      throw new Error(`Nombre de credencial inválido: ${credencial}`);
+    }
     return this.dataSource.transaction(async (em) => {
       const repo = em.getRepository(Proyecto);
       const proyecto = await repo.findOneByOrFail({ id: proyectoId });
       proyecto.repoUrl = repoUrl;
       if (rama) proyecto.ramaDefault = rama;
+      if (credencial !== undefined) proyecto.repoCredencial = credencial || null;
       const guardado = await repo.save(proyecto);
       await em.getRepository(Auditoria).save(
         em.getRepository(Auditoria).create({

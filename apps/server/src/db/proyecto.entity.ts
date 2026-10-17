@@ -28,6 +28,11 @@ export class Proyecto {
   @Column({ type: 'varchar', length: 40, nullable: true })
   remotoHead!: string | null;
 
+  // Nombre del secreto del vault con la credencial del remoto (F3: credenciales por referencia;
+  // el valor JAMÁS se guarda en el proyecto ni en el workspace)
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  repoCredencial!: string | null;
+
   @Column({
     type: 'enum',
     enum: ClasificacionProyecto,

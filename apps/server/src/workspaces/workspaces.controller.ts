@@ -21,24 +21,26 @@ export class WorkspacesController {
   ) {}
 
   // Fase 3: si el proyecto tiene remoto, el workspace nace como CLON del origen.
-  // El token (PAT) se toma del vault (Secreto 'github-token') si existe; si no, clon público.
+  // El token (PAT) se toma del vault por el nombre que el proyecto declara (repoCredencial,
+  // por defecto 'github-token') si existe; si no, clon público.
   @Post()
   @HttpCode(201)
   async crear(@Param('proyectoId') proyectoId: string) {
     const proyecto = await this.proyectos.obtener(proyectoId);
     const ws = await this.workspaces.crear(proyectoId, { gitInit: !proyecto.repoUrl });
     if (!proyecto.repoUrl) return { id: ws.id, proyectoId, clonado: false };
-    let token: string | undefined;
+    const token = await this.tokenDelVault(proyecto.repoCredencial || 'github-token');
     try {
-      token = (await this.secretos.usarPorNombre('github-token')).valor;
-    } catch {
-      token = undefined; // sin credencial en el vault: clon público
+      await this.git.clonar(proyectoId, ws.id, {
+        url: proyecto.repoUrl,
+        rama: proyecto.ramaDefault,
+        token,
+      });
+    } catch (e) {
+      // El mensaje de fallo de clone no contiene credenciales (viajan por env/askpass);
+      // exponerlo acelera el diagnóstico del remoto mal configurado
+      throw new Error(`Clon de ${proyecto.repoUrl} falló: ${(e as Error).message}`);
     }
-    await this.git.clonar(proyectoId, ws.id, {
-      url: proyecto.repoUrl,
-      rama: proyecto.ramaDefault,
-      token,
-    });
     return { id: ws.id, proyectoId, clonado: true };
   }
 
@@ -59,9 +61,11 @@ export class WorkspacesController {
     @Param('proyectoId') proyectoId: string,
     @Param('workspaceId') workspaceId: string,
   ) {
+    const proyecto = await this.proyectos.obtener(proyectoId);
+    const token = await this.tokenDelVault(proyecto.repoCredencial || 'github-token');
     const resultado = await this.git.push(proyectoId, workspaceId, {
-      rama: await this.ramaDelProyecto(proyectoId),
-      token: await this.tokenDelVault(),
+      rama: proyecto.ramaDefault || 'main',
+      token,
     });
     return { ...resultado, rechazado: resultado.rechazado ?? false };
   }
@@ -72,9 +76,11 @@ export class WorkspacesController {
     @Param('proyectoId') proyectoId: string,
     @Param('workspaceId') workspaceId: string,
   ) {
+    const proyecto = await this.proyectos.obtener(proyectoId);
+    const token = await this.tokenDelVault(proyecto.repoCredencial || 'github-token');
     return this.git.pull(proyectoId, workspaceId, {
-      rama: await this.ramaDelProyecto(proyectoId),
-      token: await this.tokenDelVault(),
+      rama: proyecto.ramaDefault || 'main',
+      token,
     });
   }
 
@@ -101,9 +107,9 @@ export class WorkspacesController {
     return proyecto.ramaDefault || 'main';
   }
 
-  private async tokenDelVault(): Promise<string | undefined> {
+  private async tokenDelVault(nombre: string): Promise<string | undefined> {
     try {
-      return (await this.secretos.usarPorNombre('github-token')).valor;
+      return (await this.secretos.usarPorNombre(nombre)).valor;
     } catch {
       return undefined; // sin credencial en el vault: remoto público
     }
