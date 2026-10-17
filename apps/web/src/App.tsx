@@ -18,6 +18,9 @@ export function App() {
   const [nombre, setNombre] = useState('');
   const [password, setPassword] = useState('');
   const [nombreProyecto, setNombreProyecto] = useState('');
+  const [remotoDe, setRemotoDe] = useState<Proyecto | null>(null);
+  const [urlRemoto, setUrlRemoto] = useState('');
+  const [ramaRemota, setRamaRemota] = useState('main');
 
   async function cargarProyectos() {
     try {
@@ -71,6 +74,24 @@ export function App() {
     cerrarSesion();
     setToken(null);
     setProyectos([]);
+  }
+
+  // Fase 3: configurar el remoto del proyecto (PATCH) y refrescar la lista
+  async function guardarRemoto() {
+    if (!remotoDe) return;
+    setError('');
+    try {
+      const actualizado = await api<Proyecto>(`/proyectos/${remotoDe.id}`, {
+        metodo: 'PATCH',
+        token: token ?? '',
+        cuerpo: { repoUrl: urlRemoto.trim() || null, ramaDefault: ramaRemota.trim() || 'main' },
+      });
+      setProyectos((ps) => ps.map((p) => (p.id === actualizado.id ? actualizado : p)));
+      setRemotoDe(null);
+      setUrlRemoto('');
+    } catch (e) {
+      setError((e as Error).message);
+    }
   }
 
   if (token && proyectoAbierto) {
@@ -146,8 +167,53 @@ export function App() {
       <ul data-testid="lista-proyectos">
         {proyectos.map((p) => (
           <li key={p.id}>
-            {p.nombre} <span className="slug">({p.slug})</span>{' '}
-            <button onClick={() => setProyectoAbierto(p)}>Abrir workspace</button>
+            {p.nombre} <span className="slug">({p.slug})</span>
+            {p.repoUrl && (
+              <span className="slug" aria-label={`Origen: ${p.repoUrl}`}>
+                {' '}
+                · {p.repoUrl}
+              </span>
+            )}{' '}
+            <button onClick={() => setProyectoAbierto(p)}>Abrir workspace</button>{' '}
+            <button className="secundario" onClick={() => setRemotoDe(p)}>
+              Remoto
+            </button>
+            {remotoDe?.id === p.id && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  void guardarRemoto();
+                }}
+                className="fila"
+                aria-label={`Remoto de ${p.nombre}`}
+              >
+                <label htmlFor={`remoto-${p.id}`} className="sr-solo">
+                  URL del remoto
+                </label>
+                <input
+                  id={`remoto-${p.id}`}
+                  aria-label="URL del remoto"
+                  value={urlRemoto}
+                  onChange={(e) => setUrlRemoto(e.target.value)}
+                  placeholder="https://github.com/org/repo.git"
+                />
+                <label htmlFor={`rama-${p.id}`} className="sr-solo">
+                  Rama por defecto
+                </label>
+                <input
+                  id={`rama-${p.id}`}
+                  aria-label="Rama por defecto"
+                  value={ramaRemota}
+                  onChange={(e) => setRamaRemota(e.target.value)}
+                  placeholder="main"
+                  style={{ maxWidth: '9rem' }}
+                />
+                <button type="submit">Guardar remoto</button>
+                <button type="button" className="secundario" onClick={() => setRemotoDe(null)}>
+                  Cancelar
+                </button>
+              </form>
+            )}
           </li>
         ))}
         {proyectos.length === 0 && <li className="vacio">Sin proyectos todavía — crea el primero.</li>}
