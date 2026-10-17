@@ -1,39 +1,129 @@
-:root { color-scheme: dark; }
+:root {
+  color-scheme: dark;
+  /* Escala de espacio (4px base) */
+  --espacio-1: 0.25rem;
+  --espacio-2: 0.5rem;
+  --espacio-3: 0.75rem;
+  --espacio-4: 1rem;
+  --espacio-6: 1.5rem;
+  --espacio-8: 2rem;
+  /* Superficie y texto (fondo #14171c → paneles #1c2028; acento azul único) */
+  --fondo: #14171c;
+  --panel: #1c2028;
+  --borde: #2c3340;
+  --borde-fuerte: #3a4250;
+  --texto: #e6e9ee;
+  --texto-2: #aeb6c4;
+  --texto-3: #99a1b0;
+  --acento: #2b6cb0;
+  --acento-vivo: #2f7ecb;
+  --error: #ff9494;
+  --ok: #7fc98f;
+  --radio: 8px;
+}
 body {
-  background: #14171c;
-  color: #e6e9ee;
+  background: var(--fondo);
+  color: var(--texto);
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   margin: 0;
   display: grid;
   place-items: center;
   min-height: 100vh;
+  line-height: 1.5;
 }
-.panel { background: #1c2028; border: 1px solid #2c3340; border-radius: 10px; padding: 2rem; width: min(90vw, 480px); }
-h1 { margin: 0 0 0.25rem; font-size: 1.4rem; }
-.lema { color: #8b93a3; margin-top: 0; font-size: 0.85rem; }
-label { display: block; margin: 0.75rem 0 0.25rem; font-size: 0.85rem; color: #aeb6c4; }
-input {
-  width: 100%; box-sizing: border-box; padding: 0.5rem; border-radius: 6px;
-  border: 1px solid #3a4250; background: #14171c; color: #e6e9ee;
-}
-button {
-  margin-top: 0.75rem; padding: 0.5rem 1rem; border-radius: 6px; border: 1px solid #3a4250;
-  background: #2b6cb0; color: white; cursor: pointer;
-}
-button:hover { background: #2f7ecb; }
-form button[type='submit'] { width: 100%; }
-.fila { display: flex; gap: 0.5rem; align-items: end; }
-.fila label { display: none; }
-.fila input { flex: 1; }
-.cabecera { display: flex; justify-content: space-between; align-items: center; }
-ul { list-style: none; padding: 0; }
-li { padding: 0.5rem; border-bottom: 1px solid #2c3340; }
-li.slug, .vacio { color: #8b93a3; }
-.error { color: #ff8080; }
-[role='tab'] { background: transparent; }
-[aria-selected='true'] { background: #2b6cb0; }
 
-.sr-solo { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
-button.secundario { background: transparent; color: #aeb6c4; }
+/* Superficies del navegador — tematizadas, no defaults (craft floor) */
+::selection { background: var(--acento-vivo); color: white; }
+input { caret-color: var(--acento-vivo); }
+input::placeholder { color: var(--texto-3); opacity: 1; }
+input:-webkit-autofill { -webkit-box-shadow: 0 0 0 40px var(--fondo) inset; -webkit-text-fill-color: var(--texto); }
+* { scrollbar-width: thin; scrollbar-color: var(--borde-fuerte) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--borde-fuerte); border-radius: 5px; }
+*::-webkit-scrollbar-track { background: transparent; }
+:focus-visible { outline: 2px solid var(--acento-vivo); outline-offset: 2px; border-radius: 4px; }
+button:focus-visible, input:focus-visible { outline-offset: 1px; }
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: var(--espacio-8);
+  width: min(92vw, 480px);
+}
+/* La vista de trabajo (chat + plan + diff + git) respira: ancho por superficie, no uno global */
+.panel--trabajo { width: min(96vw, 980px); }
+
+h1 { margin: 0 0 var(--espacio-1); font-size: 1.45rem; letter-spacing: -0.01em; }
+h2 {
+  font-size: 1.05rem;
+  margin: var(--espacio-8) 0 var(--espacio-2);
+  padding-bottom: var(--espacio-2);
+  border-bottom: 1px solid var(--borde);
+}
+h3 { margin: var(--espacio-6) 0 var(--espacio-2); font-size: 0.95rem; }
+section > h2:first-child { margin-top: var(--espacio-6); }
+.lema { color: var(--texto-2); margin-top: 0; font-size: 0.9rem; }
+
+label { display: block; margin: var(--espacio-3) 0 var(--espacio-1); font-size: 0.85rem; color: var(--texto-2); }
+input {
+  width: 100%; box-sizing: border-box; padding: var(--espacio-2) var(--espacio-3);
+  border-radius: var(--radio); border: 1px solid var(--borde-fuerte);
+  background: var(--fondo); color: var(--texto);
+  transition: border-color 120ms ease-out;
+}
+input:hover { border-color: #4a5464; }
+
+button {
+  margin-top: var(--espacio-3); padding: var(--espacio-2) var(--espacio-4);
+  border-radius: var(--radio); border: 1px solid var(--borde-fuerte);
+  background: var(--acento); color: white; cursor: pointer;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
+}
+button:hover { background: var(--acento-vivo); }
+button:active { background: #2a649f; }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+form button[type='submit'] { width: 100%; }
+
+.fila { display: flex; gap: var(--espacio-2); align-items: end; }
+.fila label { display: none; }
+.fila input { flex: 1; min-width: 0; }
+/* dentro de una fila flexible, el submit NO estira a ancho completo (eso es del formulario de acceso):
+   a ancho completo aplastaba el input a min-content — defecto visible en la vista de trabajo */
+.fila button[type='submit'] { width: auto; margin-top: 0; }
+.cabecera { display: flex; justify-content: space-between; align-items: center; gap: var(--espacio-4); }
+
+ul { list-style: none; padding: 0; margin: var(--espacio-2) 0; }
+li { padding: var(--espacio-2); border-bottom: 1px solid var(--borde); }
+li:last-child { border-bottom: none; }
+li code {
+  background: var(--fondo); border: 1px solid var(--borde);
+  border-radius: 4px; padding: 0 0.35em; font-size: 0.8rem;
+}
+li.slug, .vacio { color: var(--texto-3); }
+.error { color: var(--error); }
+[role='tab'] { background: transparent; }
+[aria-selected='true'] { background: var(--acento); }
+
+pre {
+  background: var(--fondo); border: 1px solid var(--borde); border-radius: var(--radio);
+  padding: var(--espacio-3); overflow-x: auto; font-size: 0.85rem; line-height: 1.6;
+  margin: var(--espacio-2) 0;
+}
+code { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; }
+
 .mensaje-usuario strong, .mensaje-ia strong { color: #7fb0e8; }
-mensaje-sistema { color: #d9a441; }
+.mensaje-sistema { color: #d9a441; }
+
+.sr-solo {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+button.secundario { background: transparent; color: var(--texto-2); }
+button.secundario:hover { background: rgba(255, 255, 255, 0.05); color: var(--texto); }
+
+@media (max-width: 640px) {
+  .panel { padding: var(--espacio-4); }
+  .fila { flex-direction: column; align-items: stretch; }
+  .fila button { width: 100%; }
+}

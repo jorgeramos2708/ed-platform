@@ -197,7 +197,7 @@ export function VistaWorkspace({ proyectoId, nombreProyecto, token, alSalir }: P
   }
 
   return (
-    <main className="panel" data-testid="panel-workspace">
+    <main className="panel panel--trabajo" data-testid="panel-workspace">
       <div className="cabecera">
         <h1>{nombreProyecto}</h1>
         <button onClick={alSalir}>Volver a proyectos</button>
