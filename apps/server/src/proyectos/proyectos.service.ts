@@ -57,7 +57,14 @@ export class ProyectosService {
   ): Promise<Proyecto> {
     const actorReal = actor ?? { id: 'sistema', tipo: ActorTipo.Sistema };
     const repoUrl = dto.repoUrl;
-    if (repoUrl && !/^https:\/\/[^\s]+\.git$/.test(repoUrl) && !/^git@[^\s:]+:[^\s]+\.git$/.test(repoUrl)) {
+    // file:// SOLO en modo pruebas (EDP_GIT_REMOTOS_DIR): permite ensayar la puerta completa
+    // con bare repos locales; en producción la frontera https:// / git@ es inquebrantable
+    const modoPruebas = Boolean(process.env.EDP_GIT_REMOTOS_DIR);
+    const urlValida =
+      (repoUrl && /^https:\/\/[^\s]+\.git$/.test(repoUrl)) ||
+      (repoUrl && /^git@[^\s:]+:[^\s]+\.git$/.test(repoUrl)) ||
+      (repoUrl && modoPruebas && repoUrl.startsWith('file://') && repoUrl.includes('.git'));
+    if (repoUrl && !urlValida) {
       throw new Error(`URL del remoto inválida (solo https://…​.git o git@host:repo.git): ${repoUrl}`);
     }
     const rama = dto.ramaDefault?.trim() || undefined;

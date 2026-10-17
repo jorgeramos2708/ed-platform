@@ -1,5 +1,8 @@
 // RED: integración real contra el PostgreSQL del compose (medio: localhost, BD de desarrollo)
 import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { configuracionBd } from '../db/configuracion-bd';
@@ -11,6 +14,11 @@ import { Auditoria } from '../db/auditoria.entity';
 describe('ProyectosService (integración PostgreSQL)', () => {
   let service: ProyectosService;
   let dataSource: DataSource;
+  const remotosDePrueba = mkdtempSync(join(tmpdir(), 'edp-remotos-spec-'));
+
+  afterAll(() => {
+    rmSync(remotosDePrueba, { recursive: true, force: true });
+  });
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
@@ -48,6 +56,22 @@ describe('ProyectosService (integración PostgreSQL)', () => {
       ).rejects.toThrow(/URL del remoto inválida/);
       await expect(
         service.actualizarRemoto(p.id, { repoUrl: 'http://inseguro.example/repo.git' }),
+      ).rejects.toThrow(/URL del remoto inválida/);
+    });
+
+    it('acepta file:// SOLO en modo pruebas (EDP_GIT_REMOTOS_DIR) para ensayar la puerta', async () => {
+      process.env.EDP_GIT_REMOTOS_DIR = remotosDePrueba;
+      try {
+        const p = await service.crear({ nombre: 'Remoto Local Pruebas' });
+        const r = await service.actualizarRemoto(p.id, { repoUrl: `file://${remotosDePrueba}/origen.git` });
+        expect(r.repoUrl).toBe(`file://${remotosDePrueba}/origen.git`);
+      } finally {
+        delete process.env.EDP_GIT_REMOTOS_DIR;
+      }
+      // sin el dir de pruebas: file:// sigue prohibido
+      const p2 = await service.crear({ nombre: 'Remoto Local Sin Modo' });
+      await expect(
+        service.actualizarRemoto(p2.id, { repoUrl: `file://${remotosDePrueba}/origen.git` }),
       ).rejects.toThrow(/URL del remoto inválida/);
     });
 
