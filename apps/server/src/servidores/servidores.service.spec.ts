@@ -49,7 +49,7 @@ describe('ServidoresService (integración PostgreSQL)', () => {
 
   it('crea un servidor con credencial por referencia (id de secreto) y audita', async () => {
     const credencialId = await crearCredencial('ssh-dev');
-    const s = await service.crear({ nombre: 'Servidor Dev', host: '192.168.1.50', puerto: 2222, credencialId });
+    const s = await service.crear({ nombre: 'Servidor Dev', host: '192.168.1.50', puerto: 2222, usuarioSsh: 'spike', credencialId });
     expect(s.nombre).toBe('Servidor Dev');
     expect(s.credencialId).toBe(credencialId);
     const audit = await dataSource.getRepository(Auditoria).findOneByOrFail({ accion: 'servidor.crear' });

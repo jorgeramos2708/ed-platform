@@ -11,6 +11,7 @@ export class ServidoresYPermisosMigracion1771000000005 implements MigrationInter
       host varchar(253) NOT NULL,
       puerto integer NOT NULL DEFAULT 22,
       "credencialId" uuid NOT NULL,
+      "usuarioSsh" varchar(64) NOT NULL DEFAULT 'root',
       "creadoEn" timestamptz NOT NULL DEFAULT now(),
       CONSTRAINT "PK_servidores" PRIMARY KEY (id)
     );`);

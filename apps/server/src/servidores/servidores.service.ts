@@ -20,7 +20,7 @@ export class ServidoresService {
   constructor(@InjectDataSource() private readonly dataSource: DataSource) {}
 
   async crear(
-    dto: { nombre: string; host: string; puerto: number; credencialId: string },
+    dto: { nombre: string; host: string; puerto: number; credencialId: string; usuarioSsh?: string },
     actor?: { id: string; tipo: ActorTipo },
   ): Promise<Servidor> {
     const actorReal = actor ?? { id: 'sistema', tipo: ActorTipo.Sistema };
@@ -36,7 +36,7 @@ export class ServidoresService {
     const credencial = await this.dataSource.getRepository(Secreto).findOneBy({ id: dto.credencialId });
     if (!credencial) throw new Error(`La credencial (secreto ${dto.credencialId}) no existe`);
     return this.dataSource.transaction(async (em) => {
-      const guardado = await em.getRepository(Servidor).save(em.getRepository(Servidor).create(dto));
+      const guardado = await em.getRepository(Servidor).save(em.getRepository(Servidor).create({ ...dto, usuarioSsh: dto.usuarioSsh || 'root' }));
       await em.getRepository(Auditoria).save(
         em.getRepository(Auditoria).create({
           actorId: actorReal.id,

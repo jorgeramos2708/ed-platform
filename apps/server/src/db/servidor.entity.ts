@@ -19,6 +19,10 @@ export class Servidor {
   @Column({ type: 'uuid' })
   credencialId!: string;
 
+  // Usuario SSH en el servidor remoto (por defecto root)
+  @Column({ type: 'varchar', length: 64, default: 'root' })
+  usuarioSsh!: string;
+
   @CreateDateColumn()
   creadoEn!: Date;
 }

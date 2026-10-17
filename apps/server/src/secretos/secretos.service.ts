@@ -77,6 +77,16 @@ export class SecretosService {
   // JUST-IN-TIME: para procesos internos (workers/entornos de ejecución). Sin endpoint.
   async usarPorNombre(nombre: string): Promise<{ nombre: string; valor: string }> {
     const fila = await this.dataSource.getRepository(Secreto).findOneByOrFail({ nombre });
+    return this.usarFila(fila);
+  }
+
+  // Fase 4: uso por ID (los servidores referencian la credencial por id — credenciales por referencia)
+  async usarPorId(id: string): Promise<{ nombre: string; valor: string }> {
+    const fila = await this.dataSource.getRepository(Secreto).findOneByOrFail({ id });
+    return this.usarFila(fila);
+  }
+
+  private async usarFila(fila: Secreto): Promise<{ nombre: string; valor: string }> {
     const dek = this.cifrador.descifrarCon(this.cifrador.clave, {
       ct: fila.encDek,
       iv: fila.dekIv,
@@ -94,7 +104,7 @@ export class SecretosService {
         accion: 'secreto.usar',
         recursoTipo: 'secreto',
         recursoId: fila.id,
-        detalle: { nombre }, // jamás el valor
+        detalle: { nombre: fila.nombre }, // jamás el valor
       }),
     );
     return { nombre: fila.nombre, valor };
