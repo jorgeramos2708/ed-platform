@@ -8,6 +8,7 @@ import { HealthController } from './health/health.controller';
 import { HealthService } from './health/health.service';
 import { ProyectosModule } from './proyectos/proyectos.module';
 import { SecretosModule } from './secretos/secretos.module';
+import { ServidoresModule } from './servidores/servidores.module';
 import { WorkspacesModule } from './workspaces/workspaces.module';
 import { CheckpointsModule } from './checkpoints/checkpoints.module';
 import { HarnessModule } from './harness/harness.module';
@@ -19,6 +20,7 @@ import { configuracionBd } from './db/configuracion-bd';
     AuthModule,
     ColaModule,
     SecretosModule,
+    ServidoresModule,
     ProyectosModule,
     WorkspacesModule,
     CheckpointsModule,

@@ -3,8 +3,13 @@ import { GastoIaMigracion1771000000001 } from '../migrations/0002-gasto-ia.migra
 import { ProyectoRamaDefaultMigracion1771000000002 } from '../migrations/0003-proyecto-rama-default.migration';
 import { ProyectoRemotoHeadMigracion1771000000003 } from '../migrations/0004-proyecto-remoto-head.migration';
 import { ProyectoRepoCredencialMigracion1771000000004 } from '../migrations/0005-proyecto-repo-credencial.migration';
+import { SesionesTerminalMigracion1771000000006 } from '../migrations/0007-sesiones-terminal.migration';
 import { Auditoria } from './auditoria.entity';
 import { GastoIa } from './gasto-ia.entity';
+import { SesionTerminal } from './sesion-terminal.entity';
+import { Servidor } from './servidor.entity';
+import { PermisoServidor } from './permiso-servidor.entity';
+import { ServidoresYPermisosMigracion1771000000005 } from '../migrations/0006-servidores-permisos.migration';
 import { Proyecto } from './proyecto.entity';
 import { Secreto } from './secreto.entity';
 import { Trabajo } from './trabajo.entity';
@@ -17,13 +22,15 @@ export function configuracionBd() {
   return {
     type: 'postgres' as const,
     url: process.env.DATABASE_URL ?? 'postgres://edp:edp_dev@localhost:5433/edp',
-    entities: [Usuario, Proyecto, Auditoria, Secreto, Trabajo, GastoIa],
+    entities: [Usuario, Proyecto, Auditoria, Secreto, Trabajo, GastoIa, SesionTerminal, Servidor, PermisoServidor],
     migrations: [
       MigracionInicial1771000000000,
       GastoIaMigracion1771000000001,
       ProyectoRamaDefaultMigracion1771000000002,
       ProyectoRemotoHeadMigracion1771000000003,
       ProyectoRepoCredencialMigracion1771000000004,
+      SesionesTerminalMigracion1771000000006,
+      ServidoresYPermisosMigracion1771000000005,
     ],
     migrationsRun: true,
     synchronize: false,
