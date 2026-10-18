@@ -1,15 +1,12 @@
-// F4-2: ejecución SSH REAL — sshd auténtico en contenedor (fixture validada en el spike S2),
-// credencial (clave privada) guardada CIFRADA en el vault y descifrada just-in-time.
-// La garantía de la puerta: sin permiso concedido, el acceso es denegado.
-// MODO MANUAL: si EDP_SSHD_MANUAL_PORT y EDP_SSHD_MANUAL_KEY están definidos, se usa un sshd
-// ya arrancado (fixture persistente para depurar) con su clave privada correspondiente.
+// F4-2/F4-4: SSH real y SFTP — fixture PERSISTENTE gestionada por levantar-sshd.ps1
+// (el modo con contenedor propio dentro del spec resultó inherentemente inestable en Windows:
+// el pull/arranque dentro del beforeAll colgó tres veces — lección documentada).
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { randomUUID } from 'node:crypto';
-import { mkdtempSync, rmSync, readFileSync, copyFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { createConnection } from 'node:net';
 import { Test } from '@nestjs/testing';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
@@ -28,50 +25,25 @@ let dataSource: DataSource;
 let ssh: SshService;
 let servidores: ServidoresService;
 let secretos: SecretosService;
-let contenedor = '';
-let puertoHost = 0;
 let clavePrivada = '';
+let puertoHost = 0;
 
 beforeAll(async () => {
-  const paso = (m: string) => console.log(`[ssh-spec] ${m}`);
-  const puertoManual = process.env.EDP_SSHD_MANUAL_PORT;
-
-  if (puertoManual) {
-    // MODO MANUAL: sshd persistente ya arrancado + su clave privada por ruta
-    puertoHost = Number(puertoManual);
-    clavePrivada = readFileSync(process.env.EDP_SSHD_MANUAL_KEY!, 'utf8');
-    paso(`usando sshd manual en el puerto ${puertoHost}`);
-  } else {
-    // 1. clave ed25519 para la fixture (el host tiene ssh-keygen vía git)
-    paso('generando clave ed25519');
-    const rutaClave = join(dir, 'id_ed25519');
-    const gen = spawnSync('ssh-keygen', ['-t', 'ed25519', '-f', rutaClave, '-N', '', '-q'], { timeout: 30000 });
-    if (gen.status !== 0) throw new Error(`ssh-keygen falló: ${gen.stderr}`);
-    clavePrivada = readFileSync(rutaClave, 'utf8');
-    const clavePublica = readFileSync(`${rutaClave}.pub`, 'utf8');
-
-    // 2. sshd auténtico con puerto local FIJO aleatorio (binding a 127.0.0.1 explícito)
-    contenedor = `edp-sshd-test-${randomUUID().slice(0, 8)}`;
-    puertoHost = 20000 + Math.floor(Math.random() * 20000);
-    paso(`levantando sshd en el puerto ${puertoHost}`);
-    const run = spawnSync(
-      'docker',
-      [
-        'run', '-d', '--name', contenedor,
-        '-p', `127.0.0.1:${puertoHost}:2222`,
-        '-e', 'PUID=1000', '-e', 'PGID=1000',
-        '-e', 'USER_NAME=spike',
-        '-e', `PUBLIC_KEY=${clavePublica}`,
-        '-e', 'PASSWORD_ACCESS=false',
-        'lscr.io/linuxserver/openssh-server:latest',
-      ],
-      { encoding: 'utf8', timeout: 120000 },
-    );
-    if (run.status !== 0) throw new Error(`sshd fixture falló: ${run.stderr || run.error}`);
+  // 1. fixture SSH persistente: el script levanta/reutiliza el sshd y devuelve PUERTO|RUTA_CLAVE
+  const script = join(__dirname, '..', '..', 'test', 'levantar-sshd.ps1');
+  const resultado = spawnSync('pwsh', ['-NoProfile', '-File', script, '-Puerto', '2299'], {
+    encoding: 'utf8',
+    timeout: 120000,
+  });
+  const linea = [...resultado.stdout.trim().split('\n')].reverse().find((l) => l.includes('|'));
+  if (resultado.status !== 0 || !linea) {
+    throw new Error(`fixture sshd falló: ${resultado.stderr || resultado.stdout}`);
   }
+  const [puerto, rutaClave] = linea.trim().split('|');
+  puertoHost = Number(puerto);
+  clavePrivada = readFileSync(rutaClave, 'utf8');
 
-  // 3. módulo con la clave maestra de tests
-  paso('inicializando módulo Nest');
+  // 2. módulo con la clave maestra de tests
   process.env.EDP_MASTER_KEY = 'a'.repeat(64);
   const moduleRef = await Test.createTestingModule({
     imports: [
@@ -95,86 +67,71 @@ beforeAll(async () => {
   servidores = moduleRef.get(ServidoresService);
   secretos = moduleRef.get(SecretosService);
   dataSource = moduleRef.get(DataSource);
-
-  // 4. espera del BANNER SSH real (el readiness TCP engaña: docker-proxy acepta antes de que sshd atienda)
-  paso('esperando banner SSH');
-  let listo = false;
-  for (let i = 0; i < 40 && !listo; i++) {
-    listo = await new Promise<boolean>((resolve) => {
-      const s = createConnection({ host: '127.0.0.1', port: puertoHost }, () => {});
-      s.on('data', (d: Buffer) => {
-        if (d.toString('utf8').includes('SSH-')) {
-          s.destroy();
-          resolve(true);
-        }
-      });
-      s.on('error', () => resolve(false));
-      s.setTimeout(2000, () => {
-        s.destroy();
-        resolve(false);
-      });
-    });
-    if (!listo) await new Promise((r) => setTimeout(r, 1500));
-  }
-  if (!listo) throw new Error('sshd no arrancó (sin banner SSH en 60s)');
-  paso('banner SSH recibido');
-}, 300000);
+}, 240000);
 
 afterAll(() => {
-  // en modo manual el sshd persiste (no lo creamos, no lo matamos)
-  if (contenedor) spawnSync('docker', ['rm', '-f', contenedor], { encoding: 'utf8', timeout: 30000 });
   rmSync(dir, { recursive: true, force: true });
   delete process.env.EDP_MASTER_KEY;
 });
 
-describe('SshService — ejecución real (F4-2)', () => {
+// la credencial del vault: la clave privada de la fixture (cifrada por el vault)
+async function crearServidorConClave(nombre: string, acciones: string[]): Promise<{ servidorId: string; usuarioId: string }> {
+  const secreto = await secretos.crear({ nombre: `ssh-clave-${randomUUID()}`, valor: clavePrivada });
+  const servidor = await servidores.crear({
+    nombre,
+    host: '127.0.0.1',
+    puerto: puertoHost,
+    usuarioSsh: 'spike',
+    credencialId: secreto.id,
+  });
+  const usuarioId = randomUUID();
+  await servidores.concederPermiso(servidor.id, usuarioId, acciones);
+  return { servidorId: servidor.id, usuarioId };
+}
+
+describe('SshService — SSH real y SFTP (F4-2/F4-4)', () => {
   it('ejecuta un comando en un servidor autorizado con la credencial del vault', { timeout: 120000 }, async () => {
-    // la clave privada REAL se guarda CIFRADA en el vault (crear → AES-256-GCM por DEK)
-    const secreto = await secretos.crear({ nombre: `ssh-clave-${randomUUID()}`, valor: clavePrivada });
-    const servidor = await servidores.crear({
-      nombre: 'Auth OK',
-      host: '127.0.0.1',
-      puerto: puertoHost,
-      usuarioSsh: 'spike',
-      credencialId: secreto.id,
-    });
-    await servidores.concederPermiso(servidor.id, randomUUID(), ['ejecutar']); // otro usuario: no
-    const usuarioAutorizado = randomUUID();
-    await servidores.concederPermiso(servidor.id, usuarioAutorizado, ['ejecutar']);
-    const r = await ssh.ejecutarComando(usuarioAutorizado, servidor.id, 'echo hola-ssh');
+    const { servidorId, usuarioId } = await crearServidorConClave('Auth OK', ['ejecutar']);
+    const r = await ssh.ejecutarComando(usuarioId, servidorId, 'echo hola-ssh');
     expect(r.codigo).toBe(0);
     expect(r.salida).toContain('hola-ssh');
   });
 
   it('sin permiso concedido: acceso denegado (ni siquiera intenta la conexión)', { timeout: 60000 }, async () => {
-    const secreto = await secretos.crear({ nombre: `ssh-clave-${randomUUID()}`, valor: clavePrivada });
-    const servidor = await servidores.crear({
-      nombre: 'Sin Permiso',
-      host: '127.0.0.1',
-      puerto: puertoHost,
-      usuarioSsh: 'spike',
-      credencialId: secreto.id,
-    });
-    await expect(ssh.ejecutarComando(randomUUID(), servidor.id, 'echo x')).rejects.toThrow(
+    const { servidorId } = await crearServidorConClave('Sin Permiso', []);
+    await expect(ssh.ejecutarComando(randomUUID(), servidorId, 'echo x')).rejects.toThrow(
       /Acceso denegado/,
     );
   });
 
   it('con permiso solo de sftp: ejecutar queda denegado', { timeout: 60000 }, async () => {
-    const secreto = await secretos.crear({ nombre: `ssh-clave-${randomUUID()}`, valor: clavePrivada });
-    const servidor = await servidores.crear({
-      nombre: 'Solo SFTP',
-      host: '127.0.0.1',
-      puerto: puertoHost,
-      usuarioSsh: 'spike',
-      credencialId: secreto.id,
-    });
-    const usuario = randomUUID();
-    await servidores.concederPermiso(servidor.id, usuario, ['sftp']);
-    await expect(ssh.ejecutarComando(usuario, servidor.id, 'echo x')).rejects.toThrow(
+    const { servidorId, usuarioId } = await crearServidorConClave('Solo SFTP', ['sftp']);
+    await expect(ssh.ejecutarComando(usuarioId, servidorId, 'echo x')).rejects.toThrow(
       /sin permiso de ejecutar/,
     );
   });
-});
 
-void copyFileSync; // reservado para fixtures por archivo
+  it('SFTP: sube un archivo y lo verifica leyéndolo en el servidor', { timeout: 120000 }, async () => {
+    const { servidorId, usuarioId } = await crearServidorConClave('SFTP Sube', ['sftp', 'ejecutar']);
+    const contenido = Buffer.from(`contenido sftp ${randomUUID()}\n`, 'utf8');
+    const r = await ssh.subir(usuarioId, servidorId, '/config/prueba-sftp.txt', contenido);
+    expect(r.ok).toBe(true);
+    const verificacion = await ssh.ejecutarComando(usuarioId, servidorId, 'cat /config/prueba-sftp.txt');
+    expect(verificacion.salida).toBe(contenido.toString('utf8'));
+  });
+
+  it('SFTP: descarga un archivo que ya existe en el servidor', { timeout: 120000 }, async () => {
+    const { servidorId, usuarioId } = await crearServidorConClave('SFTP Descarga', ['sftp', 'ejecutar']);
+    const esperado = `archivo remoto ${randomUUID()}`;
+    await ssh.ejecutarComando(usuarioId, servidorId, `echo "${esperado}" > /config/descarga.txt`);
+    const contenido = await ssh.descargar(usuarioId, servidorId, '/config/descarga.txt');
+    expect(contenido.toString('utf8')).toContain(esperado);
+  });
+
+  it('SFTP sin permiso: denegado', { timeout: 60000 }, async () => {
+    const { servidorId } = await crearServidorConClave('SFTP Sin Permiso', ['ejecutar']);
+    await expect(
+      ssh.subir(randomUUID(), servidorId, '/config/x.txt', Buffer.from('x')),
+    ).rejects.toThrow(/Acceso denegado/);
+  });
+});

@@ -19,6 +19,6 @@ import { SesionTerminal } from '../db/sesion-terminal.entity';
   imports: [AuthModule, SecretosModule, ProyectosModule, ServidoresModule, TypeOrmModule.forFeature([SesionTerminal])],
   controllers: [WorkspacesController],
   providers: [WorkspacesService, GitService, SondeoRemotosService, TerminalBridgeService],
-  exports: [WorkspacesService, GitService, SondeoRemotosService],
+  exports: [WorkspacesService, GitService, SondeoRemotosService, TerminalBridgeService],
 })
 export class WorkspacesModule {}
