@@ -35,3 +35,6 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Fixture SSH de tests (clave privada local — jamás en el repo)
+apps/server/test/.fixture-sshd/
