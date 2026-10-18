@@ -103,7 +103,7 @@ export function VistaServidores({ token, esAdmin }: { token: string; esAdmin: bo
     setMensajeArchivo('');
     try {
       const contenidoBase64 = btoa(unescape(encodeURIComponent(contenido)));
-      const r = await api<{ ok: boolean; rutaRemota: string }>(`/servidores/${servidorId}/archivos`, {
+      const r = await api<{ ok: boolean; rutaRemota: string; bytes: number }>(`/servidores/${servidorId}/archivos`, {
         metodo: 'POST',
         token,
         cuerpo: { rutaRemota: rutaSubir, contenidoBase64 },

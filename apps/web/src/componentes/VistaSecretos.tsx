@@ -45,7 +45,7 @@ export function VistaSecretos({ token }: { token: string }) {
   }
 
   return (
-    <section data-testid="panel-secretos">
+    <section>
       <h2>Secretos</h2>
       <p className="lema">
         Valores cifrados para credenciales (p. ej. el PAT de GitHub como “github-token”). Se guardan

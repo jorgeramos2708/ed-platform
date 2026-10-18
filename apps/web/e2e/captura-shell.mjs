@@ -1,0 +1,21 @@
+import { chromium } from 'playwright-core';
+
+const b = await chromium.launch({ channel: 'msedge', headless: true });
+const p = await (await b.newContext({ viewport: { width: 1280, height: 900 } })).newPage();
+await p.goto('http://localhost:3101/');
+await p.getByTestId('panel-acceso').waitFor({ timeout: 10000 });
+await p.getByRole('tab', { name: 'Crear cuenta' }).click();
+await p.locator('#email').fill(`shell-${Date.now()}@ed.test`);
+await p.locator('#nombre').fill('Shell');
+await p.locator('#password').fill('ClaveSegura-1');
+await p.getByRole('button', { name: 'Crear cuenta' }).click();
+await p.getByTestId('panel-proyectos').waitFor({ timeout: 10000 });
+await p.screenshot({ path: 'apps/web/e2e/capturas/shell-proyectos.png' });
+await p.getByRole('link', { name: 'Servidores' }).click();
+await p.getByTestId('panel-servidores').waitFor({ timeout: 15000 });
+await p.screenshot({ path: 'apps/web/e2e/capturas/shell-servidores.png' });
+await p.getByRole('link', { name: 'Secretos' }).click();
+await p.getByTestId('panel-secretos').waitFor({ timeout: 15000 });
+await p.screenshot({ path: 'apps/web/e2e/capturas/shell-secretos.png' });
+await b.close();
+console.log('capturas del shell ok');

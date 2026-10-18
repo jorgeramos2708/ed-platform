@@ -68,7 +68,7 @@ describe('VistaServidores (F4-6)', () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string, init?: RequestInit) => {
       llamadas.push({ url, metodo: init?.method, cuerpo: init?.body ? JSON.parse(init.body as string) : undefined });
       if (url.includes('/archivos?') || (url.includes('/archivos') && init?.method === 'GET')) {
-        return Promise.resolve(respuestaJson({ rutaRemota: '/config/notas.txt', contenidoBase64: Buffer.from('contenido descargado').toString('base64') }));
+        return Promise.resolve(respuestaJson({ rutaRemota: '/config/notas.txt', contenidoBase64: btoa('contenido descargado') }));
       }
       if (url.includes('/archivos') && init?.method === 'POST') {
         return Promise.resolve(respuestaJson({ ok: true, rutaRemota: '/config/notas.txt', bytes: 5 }));
@@ -87,7 +87,7 @@ describe('VistaServidores (F4-6)', () => {
     await screen.findByText(/Subido: \/config\/notas\.txt/);
     const subida = llamadas.find((l) => l.metodo === 'POST' && l.url.includes('/archivos'));
     expect((subida?.cuerpo as { contenidoBase64: string }).contenidoBase64).toBe(
-      Buffer.from('contenido del archivo').toString('base64'),
+      btoa(unescape(encodeURIComponent('contenido del archivo'))),
     );
     // descargar
     await userEvent.type(screen.getByLabelText(/ruta a descargar/i), '/config/notas.txt');

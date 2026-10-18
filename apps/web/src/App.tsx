@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, cerrarSesion, guardarToken, obtenerToken } from './api';
 import { VistaWorkspace } from './componentes/VistaWorkspace';
 import { VistaSecretos } from './componentes/VistaSecretos';
+import { VistaServidores } from './componentes/VistaServidores';
 
 interface Proyecto {
   id: string;
@@ -11,10 +12,21 @@ interface Proyecto {
   ramaDefault?: string;
 }
 
+type Vista = 'proyectos' | 'servidores' | 'secretos';
+
+function vistaDeHash(): Vista {
+  const h = window.location.hash;
+  if (h.includes('servidores')) return 'servidores';
+  if (h.includes('secretos')) return 'secretos';
+  return 'proyectos';
+}
+
+// F4-6b: app shell con navegación por hash — cada vista en su panel (sin acumulación en cascada)
 export function App() {
   const [token, setToken] = useState<string | null>(obtenerToken());
   const [proyectos, setProyectos] = useState<Proyecto[]>([]);
   const [proyectoAbierto, setProyectoAbierto] = useState<Proyecto | null>(null);
+  const [vista, setVista] = useState<Vista>(vistaDeHash);
   const [error, setError] = useState('');
   const [modo, setModo] = useState<'login' | 'registro'>('login');
   const [email, setEmail] = useState('');
@@ -24,6 +36,12 @@ export function App() {
   const [remotoDe, setRemotoDe] = useState<Proyecto | null>(null);
   const [urlRemoto, setUrlRemoto] = useState('');
   const [ramaRemota, setRamaRemota] = useState('main');
+
+  useEffect(() => {
+    const alCambiar = () => setVista(vistaDeHash());
+    window.addEventListener('hashchange', alCambiar);
+    return () => window.removeEventListener('hashchange', alCambiar);
+  }, []);
 
   async function cargarProyectos() {
     try {
@@ -41,7 +59,13 @@ export function App() {
 
   useEffect(() => {
     if (token) void cargarProyectos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
+
+  function navegar(v: Vista): void {
+    window.location.hash = v === 'proyectos' ? '/proyectos' : `/${v}`;
+    setVista(v);
+  }
 
   async function enviarAcceso(e: React.FormEvent) {
     e.preventDefault();
@@ -73,13 +97,6 @@ export function App() {
     }
   }
 
-  function salir() {
-    cerrarSesion();
-    setToken(null);
-    setProyectos([]);
-  }
-
-  // Fase 3: configurar el remoto del proyecto (PATCH) y refrescar la lista
   async function guardarRemoto() {
     if (!remotoDe) return;
     setError('');
@@ -95,6 +112,12 @@ export function App() {
     } catch (e) {
       setError((e as Error).message);
     }
+  }
+
+  function salir() {
+    cerrarSesion();
+    setToken(null);
+    setProyectos([]);
   }
 
   if (token && proyectoAbierto) {
@@ -150,82 +173,120 @@ export function App() {
   }
 
   return (
-    <main className="panel" data-testid="panel-proyectos">
+    <main className="panel panel--trabajo">
       <h1>ED Platform</h1>
-      <div className="cabecera">
-        <h2>Proyectos</h2>
+      <nav aria-label="Navegación principal" className="navegacion">
+        <a
+          href="#/proyectos"
+          className={vista === 'proyectos' ? 'nav-activo' : 'nav-inactivo'}
+          aria-current={vista === 'proyectos' ? 'page' : undefined}
+          onClick={() => setVista('proyectos')}
+        >
+          Proyectos
+        </a>
+        <a
+          href="#/servidores"
+          className={vista === 'servidores' ? 'nav-activo' : 'nav-inactivo'}
+          aria-current={vista === 'servidores' ? 'page' : undefined}
+          onClick={() => setVista('servidores')}
+        >
+          Servidores
+        </a>
+        <a
+          href="#/secretos"
+          className={vista === 'secretos' ? 'nav-activo' : 'nav-inactivo'}
+          aria-current={vista === 'secretos' ? 'page' : undefined}
+          onClick={() => setVista('secretos')}
+        >
+          Secretos
+        </a>
         <button onClick={salir}>Salir</button>
-      </div>
-      <form onSubmit={crearProyecto} className="fila">
-        <label htmlFor="nombre-proyecto">Nuevo proyecto</label>
-        <input
-          id="nombre-proyecto"
-          required
-          value={nombreProyecto}
-          onChange={(e) => setNombreProyecto(e.target.value)}
-          placeholder="Nombre del proyecto"
-        />
-        <button type="submit">Crear</button>
-      </form>
-      <ul data-testid="lista-proyectos">
-        {proyectos.map((p) => (
-          <li key={p.id}>
-            {p.nombre} <span className="slug">({p.slug})</span>
-            {p.repoUrl && (
-              <span className="slug" aria-label={`Origen: ${p.repoUrl}`}>
-                {' '}
-                · {p.repoUrl}
-              </span>
-            )}{' '}
-            <button onClick={() => setProyectoAbierto(p)}>Abrir workspace</button>{' '}
-            <button className="secundario" onClick={() => setRemotoDe(p)}>
-              Remoto
-            </button>
-            {remotoDe?.id === p.id && (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  void guardarRemoto();
-                }}
-                className="fila"
-                aria-label={`Remoto de ${p.nombre}`}
-              >
-                <label htmlFor={`remoto-${p.id}`} className="sr-solo">
-                  URL del remoto
-                </label>
-                <input
-                  id={`remoto-${p.id}`}
-                  aria-label="URL del remoto"
-                  value={urlRemoto}
-                  onChange={(e) => setUrlRemoto(e.target.value)}
-                  placeholder="https://github.com/org/repo.git"
-                />
-                <label htmlFor={`rama-${p.id}`} className="sr-solo">
-                  Rama por defecto
-                </label>
-                <input
-                  id={`rama-${p.id}`}
-                  aria-label="Rama por defecto"
-                  value={ramaRemota}
-                  onChange={(e) => setRamaRemota(e.target.value)}
-                  placeholder="main"
-                  style={{ maxWidth: '9rem' }}
-                />
-                <button type="submit">Guardar remoto</button>
-                <button type="button" className="secundario" onClick={() => setRemotoDe(null)}>
-                  Cancelar
-                </button>
-              </form>
-            )}
-          </li>
-        ))}
-        {proyectos.length === 0 && <li className="vacio">Sin proyectos todavía — crea el primero.</li>}
-      </ul>
-      <VistaSecretos token={token} />
+      </nav>
       {error && (
         <p role="alert" className="error">
           {error}
         </p>
+      )}
+
+      {vista === 'proyectos' && (
+        <div data-testid="panel-proyectos">
+          <div className="cabecera">
+            <h2>Proyectos</h2>
+          </div>
+          <form onSubmit={crearProyecto} className="fila">
+            <label htmlFor="nombre-proyecto">Nuevo proyecto</label>
+            <input
+              id="nombre-proyecto"
+              required
+              value={nombreProyecto}
+              onChange={(e) => setNombreProyecto(e.target.value)}
+              placeholder="Nombre del proyecto"
+            />
+            <button type="submit">Crear</button>
+          </form>
+          <ul data-testid="lista-proyectos">
+            {proyectos.map((p) => (
+              <li key={p.id}>
+                {p.nombre} <span className="slug">({p.slug})</span>
+                {p.repoUrl && (
+                  <span className="slug" aria-label={`Origen: ${p.repoUrl}`}>
+                    {' '}
+                    · {p.repoUrl}
+                  </span>
+                )}{' '}
+                <button onClick={() => setProyectoAbierto(p)}>Abrir workspace</button>{' '}
+                <button className="secundario" onClick={() => setRemotoDe(p)}>
+                  Remoto
+                </button>
+                {remotoDe?.id === p.id && (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void guardarRemoto();
+                    }}
+                    className="fila"
+                    aria-label={`Remoto de ${p.nombre}`}
+                  >
+                    <label htmlFor={`remoto-${p.id}`} className="sr-solo">
+                      URL del remoto
+                    </label>
+                    <input
+                      id={`remoto-${p.id}`}
+                      aria-label="URL del remoto"
+                      value={urlRemoto}
+                      onChange={(e) => setUrlRemoto(e.target.value)}
+                      placeholder="https://github.com/org/repo.git"
+                    />
+                    <label htmlFor={`rama-${p.id}`} className="sr-solo">
+                      Rama por defecto
+                    </label>
+                    <input
+                      id={`rama-${p.id}`}
+                      aria-label="Rama por defecto"
+                      value={ramaRemota}
+                      onChange={(e) => setRamaRemota(e.target.value)}
+                      placeholder="main"
+                      style={{ maxWidth: '9rem' }}
+                    />
+                    <button type="submit">Guardar remoto</button>
+                    <button type="button" className="secundario" onClick={() => setRemotoDe(null)}>
+                      Cancelar
+                    </button>
+                  </form>
+                )}
+              </li>
+            ))}
+            {proyectos.length === 0 && <li className="vacio">Sin proyectos todavía — crea el primero.</li>}
+          </ul>
+        </div>
+      )}
+
+      {vista === 'servidores' && <VistaServidores token={token} esAdmin={true} />}
+
+      {vista === 'secretos' && (
+        <div className="panel" data-testid="panel-secretos">
+          <VistaSecretos token={token} />
+        </div>
       )}
     </main>
   );

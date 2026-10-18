@@ -55,6 +55,13 @@ button:focus-visible, input:focus-visible { outline-offset: 1px; }
 .panel--trabajo { width: min(96vw, 980px); }
 
 h1 { margin: 0 0 var(--espacio-1); font-size: 1.45rem; letter-spacing: -0.01em; }
+.navegacion { display: flex; gap: var(--espacio-2); align-items: center; border-bottom: 1px solid var(--borde); padding-bottom: var(--espacio-2); margin-bottom: var(--espacio-4); }
+.navegacion a { text-decoration: none; padding: var(--espacio-1) var(--espacio-3); border-radius: var(--radio); color: var(--texto-2); transition: background-color 120ms ease-out, color 120ms ease-out; }
+.navegacion a:hover { background: rgba(255, 255, 255, 0.05); color: var(--texto); }
+.nav-activo { background: var(--acento); color: white; }
+.nav-activo:hover { background: var(--acento-vivo); }
+.navegacion button { margin-top: 0; margin-left: auto; }
+nested-panel { margin-top: 0; }
 h2 {
   font-size: 1.05rem;
   margin: var(--espacio-8) 0 var(--espacio-2);
