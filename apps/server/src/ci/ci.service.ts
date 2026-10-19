@@ -106,7 +106,13 @@ export class CiService implements OnModuleInit, OnModuleDestroy {
         let salida = '';
         let etapaOk = true;
         for (const comando of etapa.comandos) {
-          const r = await this.workspaces.ejecutar(corrida.proyectoId, ws.id, comando, { timeoutMs: 300000 });
+          // Las etapas del pipeline NECESITAN red (npm install, descargas): son comandos
+          // versionados en el repo (.edp-pipeline.yml), como en cualquier CI. El perfil S1
+          // sin red queda reservado a los comandos arbitrarios de los planes de la IA.
+          const r = await this.workspaces.ejecutar(corrida.proyectoId, ws.id, comando, {
+            timeoutMs: 300000,
+            redPuente: true,
+          });
           salida += `> ${comando}\n${r.salida}${r.salidaError ? `[stderr] ${r.salidaError}` : ''}\n`;
           if (r.codigo !== 0) {
             etapaOk = false;
