@@ -134,3 +134,13 @@ button.secundario:hover { background: rgba(255, 255, 255, 0.05); color: var(--te
   .fila { flex-direction: column; align-items: stretch; }
   .fila button { width: 100%; }
 }
+
+/* Lista de proyectos: nombre prominente, origen secundario, acciones agrupadas a la derecha */
+#lista-proyectos li {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--espacio-2);
+  padding: var(--espacio-3) 0; border-bottom: 1px solid var(--borde);
+}
+#lista-proyectos li strong { font-size: 1rem; }
+#lista-proyectos li .slug { font-size: 0.8rem; }
+#lista-proyectos li button { margin-top: 0; }
+#lista-proyectos li .acciones-proyecto { margin-left: auto; display: flex; gap: var(--espacio-2); }

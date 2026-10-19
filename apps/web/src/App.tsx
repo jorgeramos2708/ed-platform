@@ -227,17 +227,19 @@ export function App() {
           <ul data-testid="lista-proyectos">
             {proyectos.map((p) => (
               <li key={p.id}>
-                {p.nombre} <span className="slug">({p.slug})</span>
+                <strong>{p.nombre}</strong> <span className="slug">({p.slug})</span>
                 {p.repoUrl && (
                   <span className="slug" aria-label={`Origen: ${p.repoUrl}`}>
                     {' '}
                     · {p.repoUrl}
                   </span>
                 )}{' '}
-                <button onClick={() => setProyectoAbierto(p)}>Abrir workspace</button>{' '}
-                <button className="secundario" onClick={() => setRemotoDe(p)}>
-                  Remoto
-                </button>
+                <span className="acciones-proyecto">
+                  <button onClick={() => setProyectoAbierto(p)}>Abrir workspace</button>{' '}
+                  <button className="secundario" onClick={() => setRemotoDe(p)}>
+                    Remoto
+                  </button>
+                </span>
                 {remotoDe?.id === p.id && (
                   <form
                     onSubmit={(e) => {
