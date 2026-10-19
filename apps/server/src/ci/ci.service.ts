@@ -1,7 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { createHash } from 'node:crypto';
 import { DataSource } from 'typeorm';
+import { createHash } from 'node:crypto';
 import { CorridaCi } from '../db/corrida-ci.entity';
 import { CorridaEtapa } from '../db/corrida-etapa.entity';
 import { Artefacto } from '../db/artefacto.entity';
@@ -10,52 +10,83 @@ import { WorkspacesService } from '../workspaces/workspaces.service';
 import { GitService } from '../git/git.service';
 import { SecretosService } from '../secretos/secretos.service';
 import { ProyectosService } from '../proyectos/proyectos.service';
+import { TrabajosService } from '../cola/trabajos.service';
 
-// F5-2: el EJECUTOR de CI — runners propios (decisión ADR-0002 mitad CI):
-// el pipeline del repositorio corre en un WORKSPACE AISLADO (S1) clonado del commit,
-// etapas secuenciales con logs por etapa, y artefactos con digest persistidos en BD.
-// La cola (S3) lleva la persistencia de la ejecución — los resultados sobreviven reinicios.
+export interface PipelineDefinido {
+  etapas: { nombre: string; comandos: string[] }[];
+  artefactos: { ruta: string; etiqueta: string }[];
+}
+
+// F5-3: el disparo va por la COLA (S3) — la corrida se ejecuta en background y SUS RESULTADOS
+// persisten en BD (la puerta: consultables tras reiniciar). El API responde 202 inmediato.
 @Injectable()
-export class CiService {
+export class CiService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(CiService.name);
+  private static readonly TIPO = 'ci.corrida';
+
   constructor(
     private readonly pipeline: PipelineService,
     private readonly workspaces: WorkspacesService,
     private readonly git: GitService,
     private readonly secretos: SecretosService,
     private readonly proyectos: ProyectosService,
+    private readonly trabajos: TrabajosService,
     @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
-  // Crea la corrida (pendiente) y la ejecuta. v1 síncrono; el desacople por cola llega en F5-3.
-  async ejecutarCorrida(proyectoId: string, commitSha?: string): Promise<CorridaCi> {
+  onModuleInit(): void {
+    this.trabajos.registrarWorker(CiService.TIPO, async (payload) => {
+      const corridaId = String(payload.corridaId);
+      await this.ejecutar(corridaId);
+      return { corridaId };
+    });
+  }
+
+  onModuleDestroy(): void {
+    // los trabajos en curso los gestiona la cola (S3: re-entrega tras reinicio)
+  }
+
+  // Crea la corrida (pendiente) y encola su ejecución — el HTTP responde inmediato
+  async disparar(proyectoId: string, commitSha?: string): Promise<CorridaCi> {
     const proyecto = await this.proyectos.obtener(proyectoId);
     if (!proyecto.repoUrl) throw new Error('El proyecto no tiene remoto configurado (repo_url)');
     const repo = this.dataSource.getRepository(CorridaCi);
     const corrida = await repo.save(
       repo.create({
         proyectoId,
-        commitSha: commitSha ?? '', // se completa tras el clon (el SHA exacto lo fija git)
-        estado: 'ejecutando',
+        commitSha: commitSha ?? '',
+        estado: 'pendiente',
       }),
     );
+    await this.trabajos.encolar(CiService.TIPO, { corridaId: corrida.id });
+    return corrida;
+  }
+
+  // Ejecuta una corrida YA CREADA (la llama el worker de la cola): clona el commit,
+  // lee el pipeline, ejecuta etapas secuenciales y recolecta artefactos.
+  async ejecutar(corridaId: string): Promise<CorridaCi> {
+    const repo = this.dataSource.getRepository(CorridaCi);
+    const corrida = await repo.findOneByOrFail({ id: corridaId });
+    const proyecto = await this.proyectos.obtener(corrida.proyectoId);
+    if (!proyecto.repoUrl) throw new Error('El proyecto no tiene remoto configurado (repo_url)');
     try {
-      const ws = await this.workspaces.crear(proyectoId, { gitInit: false });
+      await repo.update({ id: corrida.id }, { estado: 'ejecutando' });
+      const ws = await this.workspaces.crear(corrida.proyectoId, { gitInit: false });
       const token = await this.tokenDelProyecto(proyecto);
-      await this.git.clonar(proyectoId, ws.id, {
+      await this.git.clonar(corrida.proyectoId, ws.id, {
         url: proyecto.repoUrl,
         rama: proyecto.ramaDefault || 'main',
         token,
       });
-      if (commitSha) {
-        const checkout = await this.workspaces.ejecutar(proyectoId, ws.id, `git checkout -q ${commitSha}`);
+      if (corrida.commitSha) {
+        const checkout = await this.workspaces.ejecutar(corrida.proyectoId, ws.id, `git checkout -q ${corrida.commitSha}`);
         if (checkout.codigo !== 0) throw new Error(`checkout del commit falló: ${checkout.salidaError}`);
       }
-      const head = await this.workspaces.ejecutar(proyectoId, ws.id, 'git rev-parse HEAD');
+      const head = await this.workspaces.ejecutar(corrida.proyectoId, ws.id, 'git rev-parse HEAD');
       const sha = head.salida.trim();
       await repo.update({ id: corrida.id }, { commitSha: sha });
 
-      const definicion = await this.leerPipeline(proyectoId, ws.id);
-      await repo.update({ id: corrida.id }, { pipelinePath: '.edp-pipeline.yml' });
+      const definicion = await this.leerPipeline(corrida.proyectoId, ws.id);
 
       // TODAS las etapas se pre-crean como pendientes: el reporte muestra el plan completo,
       // y una etapa fallida deja visibles las que no llegaron a ejecutarse
@@ -75,7 +106,7 @@ export class CiService {
         let salida = '';
         let etapaOk = true;
         for (const comando of etapa.comandos) {
-          const r = await this.workspaces.ejecutar(proyectoId, ws.id, comando, { timeoutMs: 300000 });
+          const r = await this.workspaces.ejecutar(corrida.proyectoId, ws.id, comando, { timeoutMs: 300000 });
           salida += `> ${comando}\n${r.salida}${r.salidaError ? `[stderr] ${r.salidaError}` : ''}\n`;
           if (r.codigo !== 0) {
             etapaOk = false;
@@ -89,12 +120,12 @@ export class CiService {
         );
         if (!etapaOk) {
           fallida = true;
-          break; // las etapas siguientes quedan pendientes (visibles en el reporte)
+          break;
         }
       }
 
       if (!fallida && definicion.artefactos.length) {
-        await this.recolectarArtefactos(corrida.id, proyectoId, ws.id, definicion.artefactos);
+        await this.recolectarArtefactos(corrida.id, corrida.proyectoId, ws.id, definicion.artefactos);
       }
 
       const estadoFinal = fallida ? 'fallida' : 'exitosa';
@@ -106,7 +137,28 @@ export class CiService {
     }
   }
 
-  private async leerPipeline(proyectoId: string, wsId: string): Promise<ReturnType<PipelineService['parsear']>> {
+  async contenidoArtefacto(artefactoId: string): Promise<{ id: string; etiqueta: string; digest: string; contenidoBase64: string }> {
+    const a = await this.dataSource.getRepository(Artefacto).findOneByOrFail({ id: artefactoId });
+    return { id: a.id, etiqueta: a.etiqueta, digest: a.digest, contenidoBase64: a.contenido.toString('base64') };
+  }
+
+  async listarDelProyecto(proyectoId: string): Promise<CorridaCi[]> {
+    return this.dataSource.getRepository(CorridaCi).find({
+      where: { proyectoId },
+      order: { iniciadoEn: 'DESC' },
+    });
+  }
+
+  async obtener(corridaId: string): Promise<{ corrida: CorridaCi; etapas: CorridaEtapa[] }> {
+    const corrida = await this.dataSource.getRepository(CorridaCi).findOneByOrFail({ id: corridaId });
+    const etapas = await this.dataSource.getRepository(CorridaEtapa).find({
+      where: { corridaId },
+      order: { iniciadoEn: 'ASC' },
+    });
+    return { corrida, etapas };
+  }
+
+  private async leerPipeline(proyectoId: string, wsId: string): Promise<PipelineDefinido> {
     const lectura = await this.workspaces.ejecutar(proyectoId, wsId, 'cat .edp-pipeline.yml');
     if (lectura.codigo !== 0) {
       throw new Error('El repositorio no tiene .edp-pipeline.yml (pipelines como código)');

@@ -11,6 +11,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { CiService } from './ci.service';
 import { PipelineService } from './pipeline.service';
+import { TrabajosService } from '../cola/trabajos.service';
+import { LoggerSeguro } from '../core/logger-seguro.service';
 import { WorkspacesService } from '../workspaces/workspaces.service';
 import { GitService } from '../git/git.service';
 import { SecretosService } from '../secretos/secretos.service';
@@ -27,6 +29,7 @@ import { SesionTerminal } from '../db/sesion-terminal.entity';
 import { Servidor } from '../db/servidor.entity';
 import { PermisoServidor } from '../db/permiso-servidor.entity';
 import { Secreto } from '../db/secreto.entity';
+import { Trabajo } from '../db/trabajo.entity';
 
 const remotosDir = mkdtempSync(join(tmpdir(), 'edp-ci-'));
 let dataSource: DataSource;
@@ -76,10 +79,10 @@ beforeAll(async () => {
       TypeOrmModule.forRoot({
         type: 'postgres',
         url: process.env.DATABASE_URL ?? 'postgres://edp:edp_dev@localhost:5433/edp',
-        entities: [CorridaCi, CorridaEtapa, Artefacto, Proyecto, Auditoria, SesionTerminal, Servidor, PermisoServidor, Secreto],
+        entities: [CorridaCi, CorridaEtapa, Artefacto, Proyecto, Auditoria, SesionTerminal, Servidor, PermisoServidor, Secreto, Trabajo],
         synchronize: true,
       }),
-      TypeOrmModule.forFeature([CorridaCi, CorridaEtapa, Artefacto, Proyecto, Auditoria, SesionTerminal, Servidor, PermisoServidor, Secreto]),
+      TypeOrmModule.forFeature([CorridaCi, CorridaEtapa, Artefacto, Proyecto, Auditoria, SesionTerminal, Servidor, PermisoServidor, Secreto, Trabajo]),
     ],
     providers: [
       CiService,
@@ -89,12 +92,15 @@ beforeAll(async () => {
       SecretosService,
       SanitizadorService,
       ProyectosService,
+      TrabajosService,
+      LoggerSeguro,
       ServidoresService,
       { provide: CifradorService, useFactory: () => new CifradorService(Buffer.from('a'.repeat(64), 'hex')) },
     ],
   }).compile();
   ci = moduleRef.get(CiService);
   proyectos = moduleRef.get(ProyectosService);
+  await moduleRef.get(TrabajosService).onModuleInit();
   dataSource = moduleRef.get(DataSource);
   await moduleRef.get(WorkspacesService).asegurarImagenBase();
 }, 240000);
@@ -114,7 +120,7 @@ describe('CiService — ejecutor de pipelines (F5-2)', () => {
     const { url, sha } = prepararRemoto();
     const p = await proyectos.crear({ nombre: 'CI OK', repoUrl: url });
 
-    const corrida = await ci.ejecutarCorrida(p.id);
+    const corrida = await ci.ejecutar((await ci.disparar(p.id)).id);
     expect(corrida.estado).toBe('exitosa');
     expect(corrida.commitSha).toBe(sha);
     const etapas = await dataSource.getRepository(CorridaEtapa).find({ where: { corridaId: corrida.id }, order: { iniciadoEn: 'ASC' } });
@@ -137,7 +143,7 @@ describe('CiService — ejecutor de pipelines (F5-2)', () => {
     const url = `file:///remotos/${nombre}`;
     const p = await proyectos.crear({ nombre: 'CI Roto', repoUrl: url });
 
-    const corrida = await ci.ejecutarCorrida(p.id);
+    const corrida = await ci.ejecutar((await ci.disparar(p.id)).id);
     expect(corrida.estado).toBe('fallida');
     const etapas = await dataSource.getRepository(CorridaEtapa).find({ where: { corridaId: corrida.id }, order: { iniciadoEn: 'ASC' } });
     expect(etapas[0].estado).toBe('fallida');
@@ -148,7 +154,7 @@ describe('CiService — ejecutor de pipelines (F5-2)', () => {
   it('almacena artefactos con digest sha256', { timeout: 180000 }, async () => {
     const { url, proyectoId } = prepararRemoto();
     const p = await proyectos.crear({ nombre: 'CI Artefactos', repoUrl: url });
-    const corrida = await ci.ejecutarCorrida(p.id);
+    const corrida = await ci.ejecutar((await ci.disparar(p.id)).id);
     expect(corrida.estado).toBe('exitosa');
     const artefactos = await dataSource.getRepository(Artefacto).find({ where: { corridaId: corrida.id } });
     expect(artefactos).toHaveLength(1);
@@ -172,7 +178,8 @@ describe('CiService — ejecutor de pipelines (F5-2)', () => {
     const url = `file:///remotos/${nombre}`;
     const p = await proyectos.crear({ nombre: 'CI Sin Pipeline', repoUrl: url });
 
-    await expect(ci.ejecutarCorrida(p.id)).rejects.toThrow(/edp-pipeline\.yml/);
+    const creada = await ci.disparar(p.id);
+    await expect(ci.ejecutar(creada.id)).rejects.toThrow(/edp-pipeline\.yml/);
     const corrida = await dataSource.getRepository(CorridaCi).findOneByOrFail({ proyectoId: p.id });
     expect(corrida.estado).toBe('fallida');
   });
