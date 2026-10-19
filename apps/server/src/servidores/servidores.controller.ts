@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { ActorTipo } from '../db/auditoria.entity';
 import { RolUsuario } from '../db/usuario.entity';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -82,6 +82,30 @@ export class ServidoresController {
     @Request() req: { usuario: { sub: string } },
   ): Promise<{ codigo: number; salida: string; salidaError: string }> {
     return this.ssh.ejecutarComando(req.usuario.sub, id, dto.comando);
+  }
+
+  // F4-4: SFTP — subir un archivo (contenido base64) - permiso 'sftp' verificado en el servicio
+  @Post(':id/archivos')
+  @HttpCode(201)
+  @Roles(RolUsuario.Admin, RolUsuario.Desarrollador)
+  async subirArchivo(
+    @Param('id') id: string,
+    @Body() dto: { rutaRemota: string; contenidoBase64: string },
+    @Request() req: { usuario: { sub: string } },
+  ) {
+    return this.ssh.subir(req.usuario.sub, id, dto.rutaRemota, Buffer.from(dto.contenidoBase64, 'base64'));
+  }
+
+  // F4-4: SFTP — descargar un archivo (el contenido vuelve en base64)
+  @Get(':id/archivos')
+  @Roles(RolUsuario.Admin, RolUsuario.Desarrollador)
+  async descargarArchivo(
+    @Param('id') id: string,
+    @Query('ruta') ruta: string,
+    @Request() req: { usuario: { sub: string } },
+  ): Promise<{ rutaRemota: string; contenidoBase64: string }> {
+    const contenido = await this.ssh.descargar(req.usuario.sub, id, ruta);
+    return { rutaRemota: ruta, contenidoBase64: contenido.toString('base64') };
   }
 
   // Diagnóstico (F4-5): estado vivo/muerto del servidor con latencia
