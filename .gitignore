@@ -38,3 +38,7 @@ Thumbs.db
 
 # Fixture SSH de tests (clave privada local — jamás en el repo)
 apps/server/test/.fixture-sshd/
+
+# Logs y consultas de diagnóstico local
+apps/server/test/log-*.txt
+apps/server/test/q-*.sql
