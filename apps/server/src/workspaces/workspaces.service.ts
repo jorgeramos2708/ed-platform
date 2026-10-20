@@ -91,12 +91,16 @@ export class WorkspacesService {
     // Banderas S1 completas (ADR-0006): caps fuera, no-new-privileges, rootfs de solo lectura,
     // tmpfs, límites de memoria/pids y SOLO el bind del workspace (+ extras explícitos).
     // Sin red por defecto (S1). redPuente=true SOLO para comandos git fijos con URL/rama
-    // validadas (clone/push/pull contra remotos reales) — NUNCA para comandos arbitrarios.
+    // validadas (clone/push/pull contra remotos reales) y para las ETAPAS DEL PIPELINE
+    // (comandos versionados en el .edp-pipeline.yml — necesitan red como en cualquier CI).
+    // HOME en el tmpfs: /root pertenece al rootfs read-only y el cache de npm fallaría (F5-2).
     const r = spawnSync(
       'docker',
       [
         'run', '--rm',
         ...(opciones?.redPuente ? [] : ['--network', 'none']),
+        // HOME en el tmpfs: /root pertenece al rootfs read-only y npm cache fallaría (lección F5-2)
+        '--env', 'HOME=/tmp',
         '--cap-drop', 'ALL',
         '--security-opt', 'no-new-privileges',
         '--read-only', '--tmpfs', '/tmp:rw,size=16m',

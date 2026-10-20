@@ -1,0 +1,13 @@
+stages:
+  - nombre: instalar
+    comandos:
+      - npm install --no-audit --no-fund
+  - nombre: probar
+    comandos:
+      - npm test
+  - nombre: construir
+    comandos:
+      - tar -czf notas-api.tar.gz src package.json Dockerfile
+artefactos:
+  - ruta: notas-api.tar.gz
+    etiqueta: notas-api

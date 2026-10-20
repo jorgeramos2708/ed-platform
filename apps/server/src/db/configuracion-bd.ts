@@ -11,6 +11,10 @@ import { Servidor } from './servidor.entity';
 import { CorridaCi } from './corrida-ci.entity';
 import { CorridaEtapa } from './corrida-etapa.entity';
 import { Artefacto } from './artefacto.entity';
+import { Entorno } from './entorno.entity';
+import { Despliegue } from './despliegue.entity';
+import { DesplieguePaso } from './despliegue-paso.entity';
+import { EntornosYDesplieguesMigracion1771000000008 } from '../migrations/0009-entornos-despliegues.migration';
 import { PermisoServidor } from './permiso-servidor.entity';
 import { ServidoresYPermisosMigracion1771000000005 } from '../migrations/0006-servidores-permisos.migration';
 import { CorridasCiMigracion1771000000007 } from '../migrations/0008-corridas-ci.migration';
@@ -26,7 +30,7 @@ export function configuracionBd() {
   return {
     type: 'postgres' as const,
     url: process.env.DATABASE_URL ?? 'postgres://edp:edp_dev@localhost:5433/edp',
-    entities: [Usuario, Proyecto, Auditoria, Secreto, Trabajo, GastoIa, SesionTerminal, Servidor, PermisoServidor, CorridaCi, CorridaEtapa, Artefacto],
+    entities: [Usuario, Proyecto, Auditoria, Secreto, Trabajo, GastoIa, SesionTerminal, Servidor, PermisoServidor, CorridaCi, CorridaEtapa, Artefacto, Entorno, Despliegue, DesplieguePaso],
     migrations: [
       MigracionInicial1771000000000,
       GastoIaMigracion1771000000001,
@@ -36,6 +40,7 @@ export function configuracionBd() {
       SesionesTerminalMigracion1771000000006,
       ServidoresYPermisosMigracion1771000000005,
       CorridasCiMigracion1771000000007,
+      EntornosYDesplieguesMigracion1771000000008,
     ],
     migrationsRun: true,
     synchronize: false,

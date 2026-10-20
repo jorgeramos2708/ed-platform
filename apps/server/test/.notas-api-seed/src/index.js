@@ -1,0 +1,11 @@
+const express = require('express');
+const app = express();
+const notas = [];
+let version = process.env.VERSION || '1.0.0';
+app.use(express.json());
+app.get('/health', (req, res) => res.json(process.env.FAIL_HEALTH ? { status: 'fallo' } : { status: 'ok' }));
+app.get('/health', (req, res) => { if (process.env.FAIL_HEALTH) res.status(503); res.json({ status: process.env.FAIL_HEALTH ? 'fallo' : 'ok' }); });
+app.get('/version', (req, res) => res.json({ version }));
+app.get('/notes', (req, res) => res.json(notas));
+app.post('/notes', (req, res) => { notas.push(req.body); res.status(201).json(req.body); });
+app.listen(3000, () => console.log('notas-api en 3000'));
